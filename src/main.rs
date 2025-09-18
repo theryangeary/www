@@ -27,6 +27,8 @@ use strum::{EnumIter, EnumString, IntoEnumIterator};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+// static resources
+
 const HOMEPAGE_BUTTONS: [Link; 4] = [
     Link {
         href: "/projects",
@@ -81,11 +83,79 @@ lazy_static! {
             content: include_str!("../posts/2025-why-gl.md")
         }
     ];
+
+    static ref PROJECTS: Vec<Project> = vec![
+        Project {
+            id: "choose".to_string(),
+            title: "choose".to_string(),
+            description: "A human-friendly and fast alternative to cut (and sometimes awk).".to_string(),
+            tech_stack: vec!["Rust".to_string()],
+            github_url: Some("https://github.com/theryangeary/choose".to_string()),
+            try_it_url: Some("https://github.com/theryangeary/choose?tab=readme-ov-file#installing-from-source".to_string()),
+            category: ProjectCategory::Production,
+        },
+        Project {
+            id: "personal-website".to_string(),
+            title: "Personal Website".to_string(),
+            description: "This site! Built with React, TypeScript, and Tailwind CSS. Features dark mode support and is hosted on my homelab.".to_string(),
+            tech_stack: vec!["React".to_string(), "TypeScript".to_string(), "Tailwind CSS".to_string(), "Vite".to_string(), "Smallweb".to_string()],
+            github_url: Some("https://github.com/theryangeary/www.ryangeary.dev".to_string()),
+            try_it_url: Some("https://www.ryangeary.dev".to_string()),
+            category: ProjectCategory::Production,
+        },
+        Project {
+            id: "homelab".to_string(),
+            title: "Homelab".to_string(),
+            description: "My personal infrastructure, hosted on a Raspberry Pi running docker swarm in my router closet.".to_string(),
+            tech_stack: vec!["Docker".to_string(), "Cloudflare Tunnels".to_string(), "Smallweb".to_string(), "Nginx".to_string()],
+            github_url: Some("https://github.com/theryangeary/homelab".to_string()),
+            try_it_url: Some("https://www.ryangeary.dev".to_string()),
+            category: ProjectCategory::Production,
+        },
+        Project {
+            id: "fib-o1".to_string(),
+            title: "fib-o1: Constant Time Fibonacci Sequence Values".to_string(),
+            description: "Abusing the Rust build system to provide O(1) fib(n) at runtime.".to_string(),
+            tech_stack: vec!["Rust".to_string(), "BigInt".to_string()],
+            github_url: Some("https://github.com/theryangeary/fib-o1".to_string()),
+            try_it_url: Some("https://crates.io/crates/fib-o1".to_string()),
+            category: ProjectCategory::Toy,
+        },
+        Project {
+            id: "pathfinder".to_string(),
+            title: "Pathfinder.prof".to_string(),
+            description: "A daily word puzzle combining points-based tiles with grid-based word finding.".to_string(),
+            tech_stack: vec!["Fly.io".to_string(), "Cloudflare Pages".to_string(), "Postgres".to_string(), "Rust".to_string(), "React".to_string(), "Typescript".to_string()],
+            github_url: Some("https://github.com/theryangeary/pathfinder".to_string()),
+            try_it_url: Some("https://pathfinder.prof".to_string()),
+            category: ProjectCategory::Production,
+        },
+        Project {
+            id: "ginh".to_string(),
+            title: "Ginh Is Not a Histogram".to_string(),
+            description: "A shell-based visual representation of a user's shell history.".to_string(),
+            tech_stack: vec!["Bash".to_string(), "That's it it's pure bash script".to_string()],
+            github_url: Some("https://github.com/crclark96/ginh".to_string()),
+            try_it_url: Some("https://github.com/crclark96/ginh?tab=readme-ov-file#installation".to_string()),
+            category: ProjectCategory::Toy,
+        },
+        Project {
+            id: "photo".to_string(),
+            title: "Photography Gallery Website".to_string(),
+            description: "Photo gallery website made with pure vanilla javascript components.".to_string(),
+            tech_stack: vec!["Bash".to_string(), "Javascript".to_string(), "exiftool".to_string()],
+            github_url: Some("https://github.com/theryangeary/photo".to_string()),
+            try_it_url: Some("https://theryangeary.github.io/photo".to_string()),
+            category: ProjectCategory::Production,
+        },
+    ];
 }
 
 #[derive(Embed)]
 #[folder = "$OUT_DIR/static"]
 struct Assets;
+
+// domain models 
 
 struct Link {
     href: &'static str,
@@ -121,7 +191,7 @@ struct Project {
     category: ProjectCategory,
 }
 
-#[derive(EnumIter, EnumString, PartialEq, Eq, Hash, strum::Display)]
+#[derive(EnumIter, EnumString, PartialEq, Eq, Hash, strum::Display, Copy, Clone)]
 #[strum(serialize_all = "snake_case")]
 enum ProjectCategory {
     Production,
@@ -142,21 +212,12 @@ impl ProjectCategory {
         }
     }
 
-    fn current_projects(&self) -> Vec<Project> {
-        match self {
-            ProjectCategory::Production => vec![Project {
-                id: "choose".to_string(),
-                title: "choose".to_string(),
-                description: "A human-friendly and fast alternative to cut (and sometimes awk).".to_string(),
-                tech_stack: vec!["Rust".to_string()],
-                github_url: Some("https://github.com/theryangeary/choose".to_string()),
-                try_it_url: Some("https://github.com/theryangeary/choose?tab=readme-ov-file#installing-from-source".to_string()),
-                category: ProjectCategory::Production,
-            }],
-            ProjectCategory::Toy => vec![],
-        }
+    fn current_projects(&self) -> impl Iterator<Item=&Project> {
+        PROJECTS.iter().filter(|p| p.category == *self)
     }
 }
+
+// markup generation
 
 fn head(title: &str) -> Markup {
     html! {
@@ -209,7 +270,7 @@ fn project_tabs_markup(active: ProjectCategory) -> Markup {
     }
 }
 
-fn project_grid_markup(projects: Vec<Project>) -> Markup {
+fn project_grid_markup<'a>(projects: impl Iterator<Item=&'a Project>) -> Markup {
     html! {
         div class="mt-8" {
             div class="space-y-8" {
@@ -225,7 +286,7 @@ fn project_grid_markup(projects: Vec<Project>) -> Markup {
     }
 }
 
-fn project_card_markup(project: Project) -> Markup {
+fn project_card_markup(project: &Project) -> Markup {
     html! {
         div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow" {
             header class="mb-4" {
@@ -245,7 +306,7 @@ fn project_card_markup(project: Project) -> Markup {
                 "Tech Stack: "
                 }
                 div class="flex flex-wrap gap-2" {
-                    @for tech in project.tech_stack {
+                    @for tech in &project.tech_stack {
                         span class="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
                             (tech)
                         }
@@ -325,6 +386,8 @@ fn post_card_markup(index: usize, p: &Post) -> Markup {
         }
     }
 }
+
+// endpoint handlers
 
 async fn get_projects() -> Markup {
     html! {
@@ -460,6 +523,8 @@ async fn get_static_file(Path(path): Path<String>) -> impl IntoResponse {
 async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, "404").into_response()
 }
+
+// main + router
 
 #[tokio::main]
 async fn main() {
