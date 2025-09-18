@@ -14,7 +14,7 @@
 use std::str::FromStr;
 
 use axum::extract::Path;
-use axum::http::{StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::{Router, routing::get};
 use chrono::NaiveDate;
@@ -255,6 +255,22 @@ fn navbar() -> Markup {
     }
 }
 
+fn project_page_markup(category: ProjectCategory) -> Markup {
+    html! {
+        (head("Projects"))
+        body {
+            div {
+                div class="container mx-auto px-4 py-4" {
+                    (navbar())
+                    div class="mt-8" {
+                        (project_tabs_markup(category))
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn project_tabs_markup(active: ProjectCategory) -> Markup {
     let all_tab_styles = "px-6 py-3 border-1 border-purple-300 font-medium transition-colors ";
     let inactive_tab_styles = "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600";
@@ -451,24 +467,30 @@ fn post_card_markup(index: usize, p: &Post) -> Markup {
 
 // endpoint handlers
 
-async fn get_projects() -> Markup {
-    html! {
-        (head("Projects"))
-        body {
-            div {
-                div class="container mx-auto px-4 py-4" {
-                    (navbar())
-                    div class="mt-8" {
-                        (project_tabs_markup(Default::default()))
-                    }
-                }
-            }
-        }
-    }
+async fn get_projects() -> Response {
+    project_page_markup(ProjectCategory::Production).into_response()
 }
 
-async fn get_project_tabs(Path(tab): Path<String>) -> Markup {
-    project_tabs_markup(ProjectCategory::from_str(&tab).unwrap_or(Default::default()))
+async fn get_project_tabs(Path(tab): Path<String>, headers: HeaderMap) -> Response {
+    let category = match ProjectCategory::from_str(&tab) {
+        Ok(c) => c,
+        Err(_) => return Redirect::permanent("/projects").into_response(),
+    };
+
+    match headers.get("HX-Request") {
+        Some(_) => {
+            let mut response = project_tabs_markup(category).into_response();
+
+            let headers = response.headers_mut();
+            headers.insert(
+                "HX-Push-Url",
+                HeaderValue::from_str(&format!("/projects/{}", category.to_string())).unwrap(),
+            );
+
+            response
+        }
+        None => project_page_markup(category).into_response(),
+    }
 }
 
 async fn get_post_by_index(Path(desc): Path<String>) -> Result<Redirect, StatusCode> {
@@ -503,12 +525,10 @@ async fn get_post_by_index(Path(desc): Path<String>) -> Result<Redirect, StatusC
     };
 }
 
-async fn get_post_by_index_and_id(
-    Path((index, id)): Path<(usize, String)>,
-) -> Response {
+async fn get_post_by_index_and_id(Path((index, id)): Path<(usize, String)>) -> Response {
     let post = &POSTS[index];
     if post.id != id {
-        return Redirect::permanent(&format!("/posts/{}/{}", index, post.id)).into_response()
+        return Redirect::permanent(&format!("/posts/{}/{}", index, post.id)).into_response();
     }
     post_page_markup(post).into_response()
 }
