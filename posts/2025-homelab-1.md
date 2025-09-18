@@ -1,10 +1,3 @@
----
-title: "Why Oh Why Am I Starting a Homelab"
-date: "2025-08-01"
-tags: ["homelab", "fly.io"]
-excerpt: "After evaluating a handful of options for free-tier and cheap cloud hosting, I'm foraying into the wacky world of self-hosting."
----
-
 I feel like homelab gets a bad wrap from people with more hardware on their
 hands than they know what to do with building overpowered systems with no real
 usecase. That can be cool and fun, but personally I really try to keep the

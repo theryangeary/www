@@ -53,11 +53,32 @@ const HOMEPAGE_BUTTONS: [Link; 4] = [
 lazy_static! {
     static ref POSTS: Vec<Post> = vec![
         Post {
+            title: "Working with Multiple Files in Vim",
+            date: NaiveDate::from_ymd_opt(2019, 01, 02).unwrap(),
+            tags: vec!["vim"],
+            excerpt: "I was recently asked by another member of udellug about my \"top three tips for working with multiple files/large projects in vim\". Three quickly turned into six.",
+            content: include_str!("../posts/2019-vim-tips.md"),
+        },
+        Post {
+            title: "Making FZF Completion Automatic in ZSH",
+            date: NaiveDate::from_ymd_opt(2025, 07, 25).unwrap(),
+            tags: vec!["zsh", "fzf"],
+            excerpt: "I'm forcing myself to use FZF by triggering it on spacebar with commands that can benefit from it.",
+            content: include_str!("../posts/2025-zsh-zle-fzf.md")
+        },
+        Post {
             title: "Why Oh Why Am I Starting a Homelab",
             date: NaiveDate::from_ymd_opt(2025, 08, 10).unwrap(),
             tags: vec!["homelab", "fly.io"],
             excerpt: "After evaluating a handful of options for free-tier and cheap cloud hosting, I'm foraying into the wacky world of self-hosting.",
             content: include_str!("../posts/2025-homelab-1.md")
+        },
+        Post {
+            title: "Why I'm Making My Own Grocery List",
+            date: NaiveDate::from_ymd_opt(2025, 09, 10).unwrap(),
+            tags: vec!["rust", "react", "gl", "homelab"],
+            excerpt: "Typing is lame. Pressing buttons is cool 😎. I buy the same things from the grocery store ALL the time. You probably do too.",
+            content: include_str!("../posts/2025-why-gl.md")
         }
     ];
 }
@@ -263,6 +284,48 @@ fn post_markup(p: &Post) -> Markup {
     }
 }
 
+fn posts_list_markup(ps: &[Post]) -> Markup {
+    html! {
+        div class="grid gap-6 md:gap-8" {
+            @for (index, p) in ps.iter().rev().enumerate() {
+                (post_card_markup(index, p))
+            }
+        }
+    }
+}
+
+fn post_card_markup(index: usize, p: &Post) -> Markup {
+    html! {
+        article class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow" {
+            header class="mb-4" {
+                h2 class="text-xl font-semibold text-violet-900/50 dark:text-violet-300 mb-2" {
+                    a href=(&format!("/posts/{}", index)) class="hover:underline" {
+                        (p.title)
+                    }
+                }
+                div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400" {
+                    time dateTime=(p.date){(p.formatted_date())}
+                    div class="flex gap-2" {
+                        @for tag in &p.tags {
+                            span class="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
+                                (id(tag))
+                            }
+                        }
+                    }
+                }
+            }
+
+            p class="text-gray-700 dark:text-gray-300 mb-4" {
+                (p.excerpt)
+            }
+
+            a href=(&format!("/posts/{}", index)) class="text-violet-600 dark:text-violet-400 hover:underline font-medium" {
+                "Read more →"
+            }
+        }
+    }
+}
+
 async fn get_projects() -> Markup {
     html! {
         (head("Projects"))
@@ -283,11 +346,11 @@ async fn get_project_tabs(Path(tab): Path<String>) -> Markup {
     project_tabs_markup(ProjectCategory::from_str(&tab).unwrap_or(Default::default()))
 }
 
-async fn get_posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
-    let this_post = &POSTS[0];
+async fn get_post(Path(id): Path<usize>) -> Result<Markup, StatusCode> {
+    let this_post = &POSTS[id];
     Ok(html! {
         html {
-            (head("My Blog Post"))
+            (head(this_post.title))
             body {
                 div {
                     div class="container mx-auto px-4 py-4" {
@@ -305,6 +368,24 @@ async fn get_posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
             }
         }
     })
+}
+
+async fn get_posts() -> Markup {
+    html! {
+        html {
+            (head("Posts"))
+            body {
+                div {
+                    div class="container mx-auto px-4 py-4" {
+                        (navbar())
+                        div class="mt-8" {
+                            (posts_list_markup(&POSTS))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 async fn get_index() -> Markup {
@@ -398,7 +479,8 @@ async fn main() {
         .route("/", get(get_index))
         .route("/projects", get(get_projects))
         .route("/projects/{tab}", get(get_project_tabs))
-        .route("/posts/{id}", get(get_posts))
+        .route("/posts/{id}", get(get_post))
+        .route("/posts", get(get_posts))
         .layer(TraceLayer::new_for_http());
 
     // Run it on localhost:3000
