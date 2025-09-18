@@ -26,7 +26,7 @@ based on a prefix, or perhaps fuzzy matching.
 The number of new uniquely named items entered into anyone's grocery list over
 time looks like this highly scientific graph:
 
-![chart showing things going down over time](/thingsdownovertime.png)
+![chart showing things going down over time](/static/thingsdownovertime.png)
 
 ### Multiplayer
 
@@ -48,7 +48,7 @@ For a long time, I used Google Keep to make grocery lists. It has simple
 checklists, drag and drop to reorder, and will autocomplete an in-progress list
 item with previously completed list items. 
 
-![keep autocomplete screenshot](/keep_complete.png)
+![keep autocomplete screenshot](/static/keep_complete.png)
 
 At the time, I don't think it allowed sharing/multiplayer, although it does seem
 to support it now.
@@ -97,7 +97,7 @@ considered a grocery list item, added when you hit Enter. The exception is if
 the input starts with `/`, in which case it becomes a command. So far I have
 commands for `/help` and a series of Category-manipulation commands.
 
-![gl slash commands](/gl_slash_commands.png)
+![gl slash commands](/static/gl_slash_commands.png)
 
 All of these commands have autosuggestions based on previous grocery items or
 whatever data is relevant to the command in question.
@@ -106,7 +106,7 @@ Next we have the grocery list. Populated by the inputs to the CLI component. It
 includes drag-and-drop to reorder and recategorize, checkboxes, and delete `X`s.
 Pretty straightforward all around.
 
-![gl items](/gl_items.png)
+![gl items](/static/gl_items.png)
 
 ## The Workflow
 
@@ -128,13 +128,13 @@ within categories based on previous check-off order.
 
 The manual categorization over time again looks like this graph:
 
-![chart showing things going down over time](/thingsdownovertime.png)
+![chart showing things going down over time](/static/thingsdownovertime.png)
 
 ## Demo
 
 This is still very much in development and not yet ready for a polished demo,
 but you are welcome to boot it yourself and try it out. Just checkout
-[https://github.com/theryangeary/homelab](my homelab) and use `npm run dev` and
+[my homelab](https://github.com/theryangeary/homelab) and use `npm run dev` and
 `cargo run` from the `gl/ts` and `gl/rust` directories respectively.
 
 I would like to create a demo version of the site as well for a more accessible
