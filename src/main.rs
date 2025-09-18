@@ -7,9 +7,9 @@ use axum::{Router, routing::get};
 use maud::DOCTYPE;
 use maud::{Markup, html};
 use rust_embed::Embed;
+use strum::{EnumIter, EnumString, IntoEnumIterator};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use strum::{EnumIter, EnumString, IntoEnumIterator};
 
 struct Link {
     href: &'static str,
@@ -64,46 +64,62 @@ fn navbar() -> Markup {
     }
 }
 
-struct Project;
+struct Project {
+    id: String,
+    title: String,
+    description: String,
+    tech_stack: Vec<String>,
+    github_url: Option<String>,
+    try_it_url: Option<String>,
+    category: ProjectCategory,
+}
 
 #[derive(EnumIter, EnumString, PartialEq, Eq, Hash, strum::Display)]
 #[strum(serialize_all = "snake_case")]
-enum ProjectTabs {
+enum ProjectCategory {
     Production,
     Toy,
 }
 
-impl Default for ProjectTabs {
+impl Default for ProjectCategory {
     fn default() -> Self {
-        ProjectTabs::Production
+        ProjectCategory::Production
     }
 }
 
-impl ProjectTabs {
+impl ProjectCategory {
     fn title(&self) -> &str {
         match self {
-            ProjectTabs::Production => "Production Projects",
-            ProjectTabs::Toy => "Toy Projects",
+            ProjectCategory::Production => "Production Projects",
+            ProjectCategory::Toy => "Toy Projects",
         }
     }
 
     fn current_projects(&self) -> Vec<Project> {
-        match self{
-            ProjectTabs::Production => vec![],
-            ProjectTabs::Toy => vec![],
+        match self {
+            ProjectCategory::Production => vec![Project {
+                id: "choose".to_string(),
+                title: "choose".to_string(),
+                description: "A human-friendly and fast alternative to cut (and sometimes awk).".to_string(),
+                tech_stack: vec!["Rust".to_string()],
+                github_url: Some("https://github.com/theryangeary/choose".to_string()),
+                try_it_url: Some("https://github.com/theryangeary/choose?tab=readme-ov-file#installing-from-source".to_string()),
+                category: ProjectCategory::Production,
+            }],
+            ProjectCategory::Toy => vec![],
         }
     }
 }
 
-async fn project_tabs(Path(tab): Path<String>) ->Markup {
-    project_tabs_markup(ProjectTabs::from_str(&tab).unwrap_or(Default::default()))
+async fn project_tabs(Path(tab): Path<String>) -> Markup {
+    project_tabs_markup(ProjectCategory::from_str(&tab).unwrap_or(Default::default()))
 }
 
 fn id(s: &str) -> String {
     format!("#{}", s)
 }
 
-fn project_tabs_markup(active: ProjectTabs) -> Markup {
+fn project_tabs_markup(active: ProjectCategory) -> Markup {
     let all_tab_styles = "px-6 py-3 border-1 border-purple-300 font-medium transition-colors ";
     let inactive_tab_styles = "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600";
     let active_tab_styles = "bg-purple-900/75 text-amber-200 ";
@@ -111,13 +127,13 @@ fn project_tabs_markup(active: ProjectTabs) -> Markup {
     html! {
         div id=(target_id) class="space-y-6 divide-solid divide-purple-300 divide-y-1" {
             div class="flex justify-center" {
-                @for tab in ProjectTabs::iter() {
+                @for tab in ProjectCategory::iter() {
                     @let classes = if tab == active {
                         all_tab_styles.to_owned() + active_tab_styles
                     } else {
                         all_tab_styles.to_owned() + inactive_tab_styles
                     };
-                   
+
                     button class=(classes) hx-get=(format!("/projects/{}", tab.to_string())) hx-target=(id(target_id)){
                         (tab.title())
                     }
@@ -129,8 +145,51 @@ fn project_tabs_markup(active: ProjectTabs) -> Markup {
     }
 }
 
-fn project_grid(_projects: Vec<Project>) -> Markup {
-    html!{}
+fn project_grid(projects: Vec<Project>) -> Markup {
+    html! {
+        div class="mt-8" {
+            div class="space-y-8" {
+                section {
+                    div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3" {
+                        @for project in projects {
+                            (project_card(project))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn project_card(project: Project) -> Markup {
+    html! {
+        div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow" {
+            header class="mb-4" {
+                div class="flex items-start justify-between mb-2" {
+                    h3 class="text-xl font-semibold text-primary" {
+                        (project.title)
+                    }
+                }
+            }
+
+            p class="text-gray-700 dark:text-gray-300 mb-4" {
+                (project.description)
+            }
+
+            div className="mb-4" {
+                h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2" {
+                "Tech Stack: "
+                }
+                div className="flex flex-wrap gap-2" {
+                    @for tech in project.tech_stack {
+                        span className="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
+                            (tech)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 async fn projects() -> Markup {
