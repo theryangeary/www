@@ -15,7 +15,7 @@ use std::str::FromStr;
 
 use axum::extract::Path;
 use axum::http::{StatusCode, header};
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::{Router, routing::get};
 use chrono::NaiveDate;
 use lazy_static::lazy_static;
@@ -60,27 +60,31 @@ lazy_static! {
             tags: vec!["vim"],
             excerpt: "I was recently asked by another member of udellug about my \"top three tips for working with multiple files/large projects in vim\". Three quickly turned into six.",
             content: include_str!("../posts/2019-vim-tips.md"),
+            id: "2019-vim-tips",
         },
         Post {
             title: "Making FZF Completion Automatic in ZSH",
             date: NaiveDate::from_ymd_opt(2025, 07, 25).unwrap(),
             tags: vec!["zsh", "fzf"],
             excerpt: "I'm forcing myself to use FZF by triggering it on spacebar with commands that can benefit from it.",
-            content: include_str!("../posts/2025-zsh-zle-fzf.md")
+            content: include_str!("../posts/2025-zsh-zle-fzf.md"),
+            id: "2025-zsh-zle-fzf",
         },
         Post {
             title: "Why Oh Why Am I Starting a Homelab",
             date: NaiveDate::from_ymd_opt(2025, 08, 10).unwrap(),
             tags: vec!["homelab", "fly.io"],
             excerpt: "After evaluating a handful of options for free-tier and cheap cloud hosting, I'm foraying into the wacky world of self-hosting.",
-            content: include_str!("../posts/2025-homelab-1.md")
+            content: include_str!("../posts/2025-homelab-1.md"),
+            id: "2025-homelab-1",
         },
         Post {
             title: "Why I'm Making My Own Grocery List",
             date: NaiveDate::from_ymd_opt(2025, 09, 10).unwrap(),
             tags: vec!["rust", "react", "gl", "homelab"],
             excerpt: "Typing is lame. Pressing buttons is cool 😎. I buy the same things from the grocery store ALL the time. You probably do too.",
-            content: include_str!("../posts/2025-why-gl.md")
+            content: include_str!("../posts/2025-why-gl.md"),
+            id: "2025-why-gl",
         }
     ];
 
@@ -155,7 +159,7 @@ lazy_static! {
 #[folder = "$OUT_DIR/static"]
 struct Assets;
 
-// domain models 
+// domain models
 
 struct Link {
     href: &'static str,
@@ -164,10 +168,17 @@ struct Link {
 }
 
 struct Post {
+    /// a unique id for this post; is also used in URLs, making it a very brief description of the post
+    id: &'static str,
+    /// title of post; displayed in page and html.head.title
     title: &'static str,
+    /// data of publication; displayed in page
     date: chrono::NaiveDate,
+    /// relevant subjects or technologies; displayed in page
     tags: Vec<&'static str>,
+    /// excerpt from content; not displayed in post page, but displayed in previews to posts
     excerpt: &'static str,
+    /// markdown content of document
     content: &'static str,
 }
 
@@ -212,7 +223,7 @@ impl ProjectCategory {
         }
     }
 
-    fn current_projects(&self) -> impl Iterator<Item=&Project> {
+    fn current_projects(&self) -> impl Iterator<Item = &Project> {
         PROJECTS.iter().filter(|p| p.category == *self)
     }
 }
@@ -270,7 +281,7 @@ fn project_tabs_markup(active: ProjectCategory) -> Markup {
     }
 }
 
-fn project_grid_markup<'a>(projects: impl Iterator<Item=&'a Project>) -> Markup {
+fn project_grid_markup<'a>(projects: impl Iterator<Item = &'a Project>) -> Markup {
     html! {
         div class="mt-8" {
             div class="space-y-8" {
@@ -345,7 +356,7 @@ fn project_card_markup(project: &Project) -> Markup {
     }
 }
 
-fn post_markup(p: &Post) -> Markup {
+fn post_article_markup(p: &Post) -> Markup {
     html! {
         article class="max-w-4xl mx-auto px-4 py-8" {
             header class="mb-8" {
@@ -368,6 +379,29 @@ fn post_markup(p: &Post) -> Markup {
 
             div class="prose prose-lg prose-footnotes:flex prose-footnotes:items-start prose-footnotes:inline-flex dark:prose-invert max-w-none" {
                 (p.content())
+            }
+        }
+    }
+}
+
+fn post_page_markup(post: &Post) -> Markup {
+    html! {
+        html {
+            (head(post.title))
+            body {
+                div {
+                    div class="container mx-auto px-4 py-4" {
+                        (navbar())
+                    }
+
+                    (post_article_markup(post))
+
+                    div class="container mx-auto px-4 pb-8" {
+                        a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
+                            "← Back to Posts"
+                        }
+                    }
+                }
             }
         }
     }
@@ -437,28 +471,46 @@ async fn get_project_tabs(Path(tab): Path<String>) -> Markup {
     project_tabs_markup(ProjectCategory::from_str(&tab).unwrap_or(Default::default()))
 }
 
-async fn get_post(Path(id): Path<usize>) -> Result<Markup, StatusCode> {
-    let this_post = &POSTS[id];
-    Ok(html! {
-        html {
-            (head(this_post.title))
-            body {
-                div {
-                    div class="container mx-auto px-4 py-4" {
-                        (navbar())
-                    }
-
-                    (post_markup(this_post))
-
-                    div class="container mx-auto px-4 pb-8" {
-                        a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
-                            "← Back to Posts"
-                        }
-                    }
+async fn get_post_by_index(Path(desc): Path<String>) -> Result<Redirect, StatusCode> {
+    match usize::from_str(&desc) {
+        Ok(index) => {
+            if index >= POSTS.len() {
+                return Err(StatusCode::NOT_FOUND);
+            }
+            let post = &POSTS[index];
+            return Ok(Redirect::permanent(&format!(
+                "/posts/{}/{}",
+                index, post.id
+            )));
+        }
+        Err(_) => {
+            // not an int, could be a post id
+            match &POSTS
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.id == desc)
+                .next()
+            {
+                Some((index, post)) => {
+                    return Ok(Redirect::permanent(&format!(
+                        "/posts/{}/{}",
+                        index, post.id
+                    )));
                 }
+                None => return Err(StatusCode::NOT_FOUND),
             }
         }
-    })
+    };
+}
+
+async fn get_post_by_index_and_id(
+    Path((index, id)): Path<(usize, String)>,
+) -> Response {
+    let post = &POSTS[index];
+    if post.id != id {
+        return Redirect::permanent(&format!("/posts/{}/{}", index, post.id)).into_response()
+    }
+    post_page_markup(post).into_response()
 }
 
 async fn get_posts() -> Markup {
@@ -572,7 +624,8 @@ async fn main() {
         .route("/", get(get_index))
         .route("/projects", get(get_projects))
         .route("/projects/{tab}", get(get_project_tabs))
-        .route("/posts/{id}", get(get_post))
+        .route("/posts/{index}", get(get_post_by_index))
+        .route("/posts/{index}/{id}", get(get_post_by_index_and_id))
         .route("/posts", get(get_posts))
         .layer(TraceLayer::new_for_http());
 
