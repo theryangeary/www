@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::extract::Path;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
@@ -7,7 +9,7 @@ use maud::{Markup, html};
 use rust_embed::Embed;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use strum::{EnumIter, IntoEnumIterator};
+use strum::{EnumIter, EnumString, IntoEnumIterator};
 
 struct Link {
     href: &'static str,
@@ -64,7 +66,8 @@ fn navbar() -> Markup {
 
 struct Project;
 
-#[derive(EnumIter, PartialEq, Eq, Hash)]
+#[derive(EnumIter, EnumString, PartialEq, Eq, Hash, strum::Display)]
+#[strum(serialize_all = "snake_case")]
 enum ProjectTabs {
     Production,
     Toy,
@@ -92,12 +95,21 @@ impl ProjectTabs {
     }
 }
 
-fn project_tabs(active: ProjectTabs) -> Markup {
+async fn project_tabs(Path(tab): Path<String>) ->Markup {
+    project_tabs_markup(ProjectTabs::from_str(&tab).unwrap_or(Default::default()))
+}
+
+fn id(s: &str) -> String {
+    format!("#{}", s)
+}
+
+fn project_tabs_markup(active: ProjectTabs) -> Markup {
     let all_tab_styles = "px-6 py-3 border-1 border-purple-300 font-medium transition-colors ";
     let inactive_tab_styles = "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600";
     let active_tab_styles = "bg-purple-900/75 text-amber-200 ";
+    let target_id = "project_tabs";
     html! {
-        div class="space-y-6 divide-solid divide-purple-300 divide-y-1" {
+        div id=(target_id) class="space-y-6 divide-solid divide-purple-300 divide-y-1" {
             div class="flex justify-center" {
                 @for tab in ProjectTabs::iter() {
                     @let classes = if tab == active {
@@ -106,7 +118,7 @@ fn project_tabs(active: ProjectTabs) -> Markup {
                         all_tab_styles.to_owned() + inactive_tab_styles
                     };
                    
-                    button class=(classes) {
+                    button class=(classes) hx-get=(format!("/projects/{}", tab.to_string())) hx-target=(id(target_id)){
                         (tab.title())
                     }
                 }
@@ -129,7 +141,7 @@ async fn projects() -> Markup {
                 div class="container mx-auto px-4 py-4" {
                     (navbar())
                     div class="mt-8" {
-                        (project_tabs(Default::default()))
+                        (project_tabs_markup(Default::default()))
                     }
                 }
             }
@@ -231,6 +243,7 @@ async fn main() {
         .route("/static/{file}", get(static_file))
         .route("/", get(index))
         .route("/projects", get(projects))
+        .route("/projects/{tab}", get(project_tabs))
         .layer(TraceLayer::new_for_http());
 
     // Run it on localhost:3000
