@@ -10,7 +10,7 @@ fn main() {
     Command::new("cp")
         .arg("-R")
         .arg(manifest_path.join("static"))
-        .arg(&out_path)
+        .arg(out_path)
         .output()
         .expect("failed to copy /static to $OUT_DIR");
 
@@ -35,5 +35,8 @@ fn main() {
         .unwrap()
         .stdout;
 
-    println!("cargo::warning=static-embedded assets: {:?}", String::from_utf8(assets));
+    println!(
+        "cargo::warning=static-embedded assets: {:?}",
+        String::from_utf8(assets)
+    );
 }

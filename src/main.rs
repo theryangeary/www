@@ -184,7 +184,7 @@ struct Post {
 
 impl Post {
     fn content(&self) -> Markup {
-        PreEscaped(markdown_to_html(&self.content))
+        PreEscaped(markdown_to_html(self.content))
     }
 
     fn formatted_date(&self) -> String {
@@ -204,16 +204,13 @@ struct Project {
 
 #[derive(EnumIter, EnumString, PartialEq, Eq, Hash, strum::Display, Copy, Clone)]
 #[strum(serialize_all = "snake_case")]
+#[derive(Default)]
 enum ProjectCategory {
+    #[default]
     Production,
     Toy,
 }
 
-impl Default for ProjectCategory {
-    fn default() -> Self {
-        ProjectCategory::Production
-    }
-}
 
 impl ProjectCategory {
     fn title(&self) -> &str {
@@ -484,7 +481,7 @@ async fn get_project_tabs(Path(tab): Path<String>, headers: HeaderMap) -> Respon
             let headers = response.headers_mut();
             headers.insert(
                 "HX-Push-Url",
-                HeaderValue::from_str(&format!("/projects/{}", category.to_string())).unwrap(),
+                HeaderValue::from_str(&format!("/projects/{category}")).unwrap(),
             );
 
             response
@@ -500,29 +497,27 @@ async fn get_post_by_index(Path(desc): Path<String>) -> Result<Redirect, StatusC
                 return Err(StatusCode::NOT_FOUND);
             }
             let post = &POSTS[index];
-            return Ok(Redirect::permanent(&format!(
+            Ok(Redirect::permanent(&format!(
                 "/posts/{}/{}",
                 index, post.id
-            )));
+            )))
         }
         Err(_) => {
             // not an int, could be a post id
             match &POSTS
                 .iter()
-                .enumerate()
-                .filter(|(_, p)| p.id == desc)
-                .next()
+                .enumerate().find(|(_, p)| p.id == desc)
             {
                 Some((index, post)) => {
-                    return Ok(Redirect::permanent(&format!(
+                    Ok(Redirect::permanent(&format!(
                         "/posts/{}/{}",
                         index, post.id
-                    )));
+                    )))
                 }
-                None => return Err(StatusCode::NOT_FOUND),
+                None => Err(StatusCode::NOT_FOUND),
             }
         }
-    };
+    }
 }
 
 async fn get_post_by_index_and_id(Path((index, id)): Path<(usize, String)>) -> Response {
@@ -615,7 +610,7 @@ async fn get_static_file(Path(path): Path<String>) -> impl IntoResponse {
                 path,
                 Assets::iter().collect::<Vec<_>>()
             );
-            return not_found().await;
+            not_found().await
         }
     }
 }
@@ -667,5 +662,5 @@ fn markdown_to_html(markdown: &str) -> String {
 }
 
 fn id(s: &str) -> String {
-    format!("#{}", s)
+    format!("#{s}")
 }
