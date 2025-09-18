@@ -97,9 +97,9 @@ lazy_static! {
         Project {
             id: "personal-website".to_string(),
             title: "Personal Website".to_string(),
-            description: "This site! Built with React, TypeScript, and Tailwind CSS. Features dark mode support and is hosted on my homelab.".to_string(),
-            tech_stack: vec!["React".to_string(), "TypeScript".to_string(), "Tailwind CSS".to_string(), "Vite".to_string(), "Smallweb".to_string()],
-            github_url: Some("https://github.com/theryangeary/www.ryangeary.dev".to_string()),
+            description: "This site! Built with Rust (maud + axum), htmx, and Tailwind CSS. Compiles to a single binary with all static resources included.".to_string(),
+            tech_stack: vec!["Rust".to_string(), "htmx".to_string(), "Tailwind CSS".to_string(), "maud".to_string(), "axum".to_string()],
+            github_url: Some("https://github.com/theryangeary/homelab/main/www".to_string()),
             try_it_url: Some("https://www.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
         },
@@ -288,28 +288,56 @@ fn project_grid_markup<'a>(projects: impl Iterator<Item=&'a Project>) -> Markup 
 
 fn project_card_markup(project: &Project) -> Markup {
     html! {
-        div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow" {
-            header class="mb-4" {
-                div class="flex items-start justify-between mb-2" {
-                    h3 class="text-xl font-semibold text-primary" {
-                        (project.title)
+        div class="
+            bg-white 
+            dark:bg-gray-800 
+            rounded-lg 
+            shadow-md 
+            p-6 
+            hover:shadow-lg 
+            transition-shadow 
+            flex 
+            flex-col 
+            justify-between 
+            h-full" 
+        {
+            div {
+                header class="mb-4" {
+                    div class="flex items-start justify-between mb-2" {
+                        h3 class="text-xl font-semibold text-primary" {
+                            (project.title)
+                        }
+                    }
+                }
+
+                p class="text-gray-700 dark:text-gray-300 mb-4" {
+                    (project.description)
+                }
+
+                div class="mb-4" {
+                    h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2" {
+                    "Tech Stack: "
+                    }
+                    div class="flex flex-wrap gap-2" {
+                        @for tech in &project.tech_stack {
+                            span class="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
+                                (tech)
+                            }
+                        }
                     }
                 }
             }
 
-            p class="text-gray-700 dark:text-gray-300 mb-4" {
-                (project.description)
-            }
-
-            div class="mb-4" {
-                h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2" {
-                "Tech Stack: "
+            div class="flex gap-3" {
+                @if let Some(github_url) = &project.github_url {
+                    a href=(github_url) target="_blank" rel="noopener noreferrer" class="text-violet-600 dark:text-violet-400 hover:underline font-medium text-sm" {
+                        "View Code →"
+                    }
                 }
-                div class="flex flex-wrap gap-2" {
-                    @for tech in &project.tech_stack {
-                        span class="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
-                            (tech)
-                        }
+
+                @if let Some(try_it_url) = &project.try_it_url {
+                    a href=(try_it_url) target="_blank" rel="noopener noreferrer" class="text-violet-600 dark:text-violet-400 hover:underline font-medium text-sm" {
+                        "Try It →"
                     }
                 }
             }
