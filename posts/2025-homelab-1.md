@@ -65,6 +65,8 @@ explorations, so you'll get to hear about what I get up to.
 
 The details of my setup so far will be in my next post!
 
+## Footnotes
+
 [^1]: One honorable mention goes to cloudflare pages, which allows 100 projects,
 20,000 files per project, and 500 builds a month. It's not totally unlimited
 but it is pretty hard to imagine having the time as an individual to build

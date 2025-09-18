@@ -287,7 +287,7 @@ fn post_markup(p: &Post) -> Markup {
 fn posts_list_markup(ps: &[Post]) -> Markup {
     html! {
         div class="grid gap-6 md:gap-8" {
-            @for (index, p) in ps.iter().rev().enumerate() {
+            @for (index, p) in ps.iter().enumerate().rev() {
                 (post_card_markup(index, p))
             }
         }

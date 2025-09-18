@@ -156,6 +156,8 @@ At time of publication, `gl` is basically functional but could use some polish.
 However it is usable, so if this is of interest feel free to host it yourself
 and try it out.
 
+## Footnotes
+
 [^1]: Need is a strong word. Realistically I don't "need" any features or even a
     grocery list at all. These are conveniences I want, not needs.
 [^2]: Not as boring as SQLite certainly, but I feel confident I won't get burned
