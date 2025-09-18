@@ -1,10 +1,24 @@
+//! This is my website, www.ryangeary.dev, which compiles to a single executable
+//!
+//! For simplicity, it is a single main.rs file, although it does pull in
+//! resources from other files at build time.
+//!
+//! The general structure is:
+//! 1. const definitions
+//! 1. domain model definitions
+//! 1. `Markup` generating functions
+//! 1. endpoint handlers
+//! 1. main, including the router
+//! 1. utility functions
+
 use std::str::FromStr;
 
 use axum::extract::Path;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::{Router, routing::get};
-use chrono::{DateTime, Utc};
+use chrono::NaiveDate;
+use lazy_static::lazy_static;
 use maud::{DOCTYPE, PreEscaped};
 use maud::{Markup, html};
 use pulldown_cmark::{Options, Parser, html};
@@ -12,19 +26,6 @@ use rust_embed::Embed;
 use strum::{EnumIter, EnumString, IntoEnumIterator};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-fn markdown_to_html(markdown: &str) -> String {
-    let parser = Parser::new_ext(markdown, Options::all());
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-    html_output
-}
-
-struct Link {
-    href: &'static str,
-    title: &'static str,
-    target: Option<&'static str>,
-}
 
 const HOMEPAGE_BUTTONS: [Link; 4] = [
     Link {
@@ -49,37 +50,43 @@ const HOMEPAGE_BUTTONS: [Link; 4] = [
     },
 ];
 
-const POSTS: [Post; 1] = [
-    Post {
-        id: "2025-homelab-1.md",
-        title: "hom",
-        date: DateTime::from_timestamp_nanos(0),
-        tags: vec![],
-    }
-];
-
-fn head(title: &str) -> Markup {
-    html! {
-        head {
-            (DOCTYPE)
-            meta charset="UTF-8" {};
-            meta name="viewport" content="width=device-width, initial-scale=1.0" {};
-            link rel="stylesheet" href="/static/output.css";
-            script src="/static/htmx.min.js" {};
-            title { (title) }
+lazy_static! {
+    static ref POSTS: Vec<Post> = vec![
+        Post {
+            title: "Why Oh Why Am I Starting a Homelab",
+            date: NaiveDate::from_ymd_opt(2025, 08, 10).unwrap(),
+            tags: vec!["homelab", "fly.io"],
+            excerpt: "After evaluating a handful of options for free-tier and cheap cloud hosting, I'm foraying into the wacky world of self-hosting.",
+            content: include_str!("../posts/2025-homelab-1.md")
         }
-    }
+    ];
 }
 
-fn navbar() -> Markup {
-    html! {
-        nav class="m-4" {
-            div class="flex justify-center divide-x-1 divide-purple-300 divide-solid " {
-                a class="text-xl text-purple-900/50 dark:text-violet-300 hover:underline decoration-3 pr-3 pl-3 md:text-3xl flex-1 " href="/" { "Ryan Geary" }
-                a class="text-xl text-purple-900/50 dark:text-violet-300 hover:underline decoration-3 pr-3 pl-3 flex-none " href="/projects" { "Projects" }
-                a class="text-xl text-purple-900/50 dark:text-violet-300 hover:underline decoration-3 pr-3 pl-3 flex-none " href="/posts" { "Posts" }
-            }
-        }
+#[derive(Embed)]
+#[folder = "$OUT_DIR/static"]
+struct Assets;
+
+struct Link {
+    href: &'static str,
+    title: &'static str,
+    target: Option<&'static str>,
+}
+
+struct Post {
+    title: &'static str,
+    date: chrono::NaiveDate,
+    tags: Vec<&'static str>,
+    excerpt: &'static str,
+    content: &'static str,
+}
+
+impl Post {
+    fn content(&self) -> Markup {
+        PreEscaped(markdown_to_html(&self.content))
+    }
+
+    fn formatted_date(&self) -> String {
+        self.date.to_string()
     }
 }
 
@@ -130,12 +137,29 @@ impl ProjectCategory {
     }
 }
 
-async fn project_tabs(Path(tab): Path<String>) -> Markup {
-    project_tabs_markup(ProjectCategory::from_str(&tab).unwrap_or(Default::default()))
+fn head(title: &str) -> Markup {
+    html! {
+        head {
+            (DOCTYPE)
+            meta charset="UTF-8" {};
+            meta name="viewport" content="width=device-width, initial-scale=1.0" {};
+            link rel="stylesheet" href="/static/output.css";
+            script src="/static/htmx.min.js" {};
+            title { (title) }
+        }
+    }
 }
 
-fn id(s: &str) -> String {
-    format!("#{}", s)
+fn navbar() -> Markup {
+    html! {
+        nav class="m-4" {
+            div class="flex justify-center divide-x-1 divide-purple-300 divide-solid " {
+                a class="text-xl text-purple-900/50 dark:text-violet-300 hover:underline decoration-3 pr-3 pl-3 md:text-3xl flex-1 " href="/" { "Ryan Geary" }
+                a class="text-xl text-purple-900/50 dark:text-violet-300 hover:underline decoration-3 pr-3 pl-3 flex-none " href="/projects" { "Projects" }
+                a class="text-xl text-purple-900/50 dark:text-violet-300 hover:underline decoration-3 pr-3 pl-3 flex-none " href="/posts" { "Posts" }
+            }
+        }
+    }
 }
 
 fn project_tabs_markup(active: ProjectCategory) -> Markup {
@@ -159,19 +183,19 @@ fn project_tabs_markup(active: ProjectCategory) -> Markup {
                 }
             }
 
-            (project_grid(active.current_projects()))
+            (project_grid_markup(active.current_projects()))
         }
     }
 }
 
-fn project_grid(projects: Vec<Project>) -> Markup {
+fn project_grid_markup(projects: Vec<Project>) -> Markup {
     html! {
         div class="mt-8" {
             div class="space-y-8" {
                 section {
                     div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3" {
                         @for project in projects {
-                            (project_card(project))
+                            (project_card_markup(project))
                         }
                     }
                 }
@@ -180,7 +204,7 @@ fn project_grid(projects: Vec<Project>) -> Markup {
     }
 }
 
-fn project_card(project: Project) -> Markup {
+fn project_card_markup(project: Project) -> Markup {
     html! {
         div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow" {
             header class="mb-4" {
@@ -211,45 +235,7 @@ fn project_card(project: Project) -> Markup {
     }
 }
 
-async fn projects() -> Markup {
-    html! {
-        (head("Projects"))
-        body {
-            div {
-                div class="container mx-auto px-4 py-4" {
-                    (navbar())
-                    div class="mt-8" {
-                        (project_tabs_markup(Default::default()))
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct Post {
-    id: &'static str,
-    title: &'static str,
-    date: chrono::DateTime<Utc>,
-    tags: Vec<&'static str>,
-}
-
-impl Post {
-    fn raw_content(&self) -> String {
-        let content = Assets::get(&self.id).expect("posts should be statically defined to be valid");
-        str::from_utf8(content.data.as_ref()).expect("posts should be valid utf-8").to_owned()
-    }
-
-    fn content(&self) -> Markup {
-        PreEscaped(markdown_to_html(&self.raw_content()))
-    }
-
-    fn formatted_date(&self) -> String {
-        self.date.to_string()
-    }
-}
-
-fn post(p: &Post) -> Markup {
+fn post_markup(p: &Post) -> Markup {
     html! {
         article class="max-w-4xl mx-auto px-4 py-8" {
             header class="mb-8" {
@@ -277,8 +263,28 @@ fn post(p: &Post) -> Markup {
     }
 }
 
-async fn posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
-    let this_post =  &POSTS[0];
+async fn get_projects() -> Markup {
+    html! {
+        (head("Projects"))
+        body {
+            div {
+                div class="container mx-auto px-4 py-4" {
+                    (navbar())
+                    div class="mt-8" {
+                        (project_tabs_markup(Default::default()))
+                    }
+                }
+            }
+        }
+    }
+}
+
+async fn get_project_tabs(Path(tab): Path<String>) -> Markup {
+    project_tabs_markup(ProjectCategory::from_str(&tab).unwrap_or(Default::default()))
+}
+
+async fn get_posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
+    let this_post = &POSTS[0];
     Ok(html! {
         html {
             (head("My Blog Post"))
@@ -288,7 +294,7 @@ async fn posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
                         (navbar())
                     }
 
-                    (post(this_post))
+                    (post_markup(this_post))
 
                     div class="container mx-auto px-4 pb-8" {
                         a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
@@ -301,7 +307,7 @@ async fn posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
     })
 }
 
-async fn index() -> Markup {
+async fn get_index() -> Markup {
     html! {
         (head("Ryan Geary"))
         body {
@@ -351,11 +357,7 @@ async fn index() -> Markup {
     }
 }
 
-#[derive(Embed)]
-#[folder = "$OUT_DIR/static"]
-struct Assets;
-
-async fn static_file(Path(path): Path<String>) -> impl IntoResponse {
+async fn get_static_file(Path(path): Path<String>) -> impl IntoResponse {
     tracing::info!("static");
     match Assets::get(&path) {
         Some(content) => {
@@ -392,11 +394,11 @@ async fn main() {
 
     // Build our application
     let app = Router::new()
-        .route("/static/{file}", get(static_file))
-        .route("/", get(index))
-        .route("/projects", get(projects))
-        .route("/projects/{tab}", get(project_tabs))
-        .route("/posts/{id}", get(posts))
+        .route("/static/{file}", get(get_static_file))
+        .route("/", get(get_index))
+        .route("/projects", get(get_projects))
+        .route("/projects/{tab}", get(get_project_tabs))
+        .route("/posts/{id}", get(get_posts))
         .layer(TraceLayer::new_for_http());
 
     // Run it on localhost:3000
@@ -405,4 +407,17 @@ async fn main() {
     axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
+}
+
+// utility functions
+
+fn markdown_to_html(markdown: &str) -> String {
+    let parser = Parser::new_ext(markdown, Options::all());
+    let mut html_output = String::new();
+    html::push_html(&mut html_output, parser);
+    html_output
+}
+
+fn id(s: &str) -> String {
+    format!("#{}", s)
 }
