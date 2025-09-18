@@ -4,12 +4,21 @@ use axum::extract::Path;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::{Router, routing::get};
-use maud::DOCTYPE;
+use chrono::{DateTime, Utc};
+use maud::{DOCTYPE, PreEscaped};
 use maud::{Markup, html};
+use pulldown_cmark::{Options, Parser, html};
 use rust_embed::Embed;
 use strum::{EnumIter, EnumString, IntoEnumIterator};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+fn markdown_to_html(markdown: &str) -> String {
+    let parser = Parser::new_ext(markdown, Options::all());
+    let mut html_output = String::new();
+    html::push_html(&mut html_output, parser);
+    html_output
+}
 
 struct Link {
     href: &'static str,
@@ -40,7 +49,16 @@ const HOMEPAGE_BUTTONS: [Link; 4] = [
     },
 ];
 
-fn head() -> Markup {
+const POSTS: [Post; 1] = [
+    Post {
+        id: "2025-homelab-1.md",
+        title: "hom",
+        date: DateTime::from_timestamp_nanos(0),
+        tags: vec![],
+    }
+];
+
+fn head(title: &str) -> Markup {
     html! {
         head {
             (DOCTYPE)
@@ -48,6 +66,7 @@ fn head() -> Markup {
             meta name="viewport" content="width=device-width, initial-scale=1.0" {};
             link rel="stylesheet" href="/static/output.css";
             script src="/static/htmx.min.js" {};
+            title { (title) }
         }
     }
 }
@@ -176,13 +195,13 @@ fn project_card(project: Project) -> Markup {
                 (project.description)
             }
 
-            div className="mb-4" {
-                h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2" {
+            div class="mb-4" {
+                h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2" {
                 "Tech Stack: "
                 }
-                div className="flex flex-wrap gap-2" {
+                div class="flex flex-wrap gap-2" {
                     @for tech in project.tech_stack {
-                        span className="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
+                        span class="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
                             (tech)
                         }
                     }
@@ -194,7 +213,7 @@ fn project_card(project: Project) -> Markup {
 
 async fn projects() -> Markup {
     html! {
-        (head())
+        (head("Projects"))
         body {
             div {
                 div class="container mx-auto px-4 py-4" {
@@ -208,9 +227,83 @@ async fn projects() -> Markup {
     }
 }
 
+struct Post {
+    id: &'static str,
+    title: &'static str,
+    date: chrono::DateTime<Utc>,
+    tags: Vec<&'static str>,
+}
+
+impl Post {
+    fn raw_content(&self) -> String {
+        let content = Assets::get(&self.id).expect("posts should be statically defined to be valid");
+        str::from_utf8(content.data.as_ref()).expect("posts should be valid utf-8").to_owned()
+    }
+
+    fn content(&self) -> Markup {
+        PreEscaped(markdown_to_html(&self.raw_content()))
+    }
+
+    fn formatted_date(&self) -> String {
+        self.date.to_string()
+    }
+}
+
+fn post(p: &Post) -> Markup {
+    html! {
+        article class="max-w-4xl mx-auto px-4 py-8" {
+            header class="mb-8" {
+                h1 class="text-3xl md:text-4xl font-bold text-violet-900/50 dark:text-violet-300 mb-4" {
+                    (p.title)
+                }
+                div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400" {
+                    time dateTime=(p.date) {
+                        (p.formatted_date())
+                    }
+                    div class="flex gap-2" {
+                        @for tag in &p.tags {
+                            span class="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-2 py-1 rounded text-xs" {
+                                (format!("#{tag}"))
+                            }
+                        }
+                    }
+                }
+            }
+
+            div class="prose prose-lg dark:prose-invert max-w-none" {
+                (p.content())
+            }
+        }
+    }
+}
+
+async fn posts(Path(id): Path<String>) -> Result<Markup, StatusCode> {
+    let this_post =  &POSTS[0];
+    Ok(html! {
+        html {
+            (head("My Blog Post"))
+            body {
+                div {
+                    div class="container mx-auto px-4 py-4" {
+                        (navbar())
+                    }
+
+                    (post(this_post))
+
+                    div class="container mx-auto px-4 pb-8" {
+                        a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
+                            "← Back to Posts"
+                        }
+                    }
+                }
+            }
+        }
+    })
+}
+
 async fn index() -> Markup {
     html! {
-        (head())
+        (head("Ryan Geary"))
         body {
             div class="container mx-auto px-4 flex h-screen" {
                 div class="m-auto" {
@@ -303,6 +396,7 @@ async fn main() {
         .route("/", get(index))
         .route("/projects", get(projects))
         .route("/projects/{tab}", get(project_tabs))
+        .route("/posts/{id}", get(posts))
         .layer(TraceLayer::new_for_http());
 
     // Run it on localhost:3000
