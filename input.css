@@ -18,3 +18,13 @@ body {
         @apply text-indigo-900 dark:text-indigo-200;
     }
 }
+
+.footnote-definition > sup, .footnote-definition > p  {
+  display: inline;
+}
+
+.footnote-definition {
+    @apply
+    pb-5
+}
+

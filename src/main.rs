@@ -366,7 +366,7 @@ fn post_markup(p: &Post) -> Markup {
                 }
             }
 
-            div class="prose prose-lg dark:prose-invert max-w-none" {
+            div class="prose prose-lg prose-footnotes:flex prose-footnotes:items-start prose-footnotes:inline-flex dark:prose-invert max-w-none" {
                 (p.content())
             }
         }
