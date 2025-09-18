@@ -1,0 +1,8 @@
+# rebuild and restart when any file changes
+[tasks.dev]
+run = '''
+mise watch serve --watch . --restart
+'''
+
+[tasks.serve]
+run = 'cargo run'
