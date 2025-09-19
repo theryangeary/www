@@ -24,6 +24,7 @@ use maud::{Markup, html};
 use pulldown_cmark::{Options, Parser, html};
 use rust_embed::Embed;
 use strum::{EnumIter, EnumString, IntoEnumIterator};
+use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -103,7 +104,7 @@ lazy_static! {
             title: "Personal Website".to_string(),
             description: "This site! Built with Rust (maud + axum), htmx, and Tailwind CSS. Compiles to a single binary with all static resources included.".to_string(),
             tech_stack: vec!["Rust".to_string(), "htmx".to_string(), "Tailwind CSS".to_string(), "maud".to_string(), "axum".to_string()],
-            github_url: Some("https://github.com/theryangeary/homelab/main/www".to_string()),
+            github_url: Some("https://github.com/theryangeary/www".to_string()),
             try_it_url: Some("https://www.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
         },
@@ -210,7 +211,6 @@ enum ProjectCategory {
     Production,
     Toy,
 }
-
 
 impl ProjectCategory {
     fn title(&self) -> &str {
@@ -504,16 +504,11 @@ async fn get_post_by_index(Path(desc): Path<String>) -> Result<Redirect, StatusC
         }
         Err(_) => {
             // not an int, could be a post id
-            match &POSTS
-                .iter()
-                .enumerate().find(|(_, p)| p.id == desc)
-            {
-                Some((index, post)) => {
-                    Ok(Redirect::permanent(&format!(
-                        "/posts/{}/{}",
-                        index, post.id
-                    )))
-                }
+            match &POSTS.iter().enumerate().find(|(_, p)| p.id == desc) {
+                Some((index, post)) => Ok(Redirect::permanent(&format!(
+                    "/posts/{}/{}",
+                    index, post.id
+                ))),
                 None => Err(StatusCode::NOT_FOUND),
             }
         }
@@ -647,9 +642,12 @@ async fn main() {
     // Run it on localhost:3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
-    axum::serve(listener, app.into_make_service())
-        .await
-        .unwrap();
+    let server =
+        axum::serve(listener, app.into_make_service()).with_graceful_shutdown(shutdown_signal());
+
+    if let Err(e) = server.await {
+        tracing::error!("server error: {}", e);
+    }
 }
 
 // utility functions
@@ -663,4 +661,30 @@ fn markdown_to_html(markdown: &str) -> String {
 
 fn id(s: &str) -> String {
     format!("#{s}")
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    tokio::select! {
+        _ = ctrl_c => {
+            tracing::info!("received Ctrl+C signal");
+        }
+        _ = terminate => {
+            tracing::info!("received SIGTERM signal");
+        }
+    }
+
+    tracing::info!("starting graceful shutdown");
 }
