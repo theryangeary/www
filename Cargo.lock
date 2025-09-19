@@ -1418,6 +1418,7 @@ dependencies = [
  "mime_guess",
  "pulldown-cmark",
  "rust-embed",
+ "serde_json",
  "strum",
  "tokio",
  "tower",

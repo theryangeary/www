@@ -16,6 +16,7 @@ use std::str::FromStr;
 use axum::extract::Path;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
+use axum::Json;
 use axum::{Router, routing::get};
 use chrono::NaiveDate;
 use lazy_static::lazy_static;
@@ -614,6 +615,13 @@ async fn not_found() -> Response {
     (StatusCode::NOT_FOUND, "404").into_response()
 }
 
+async fn health_check() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "status": "healthy",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    }))
+}
+
 // main + router
 
 #[tokio::main]
@@ -637,6 +645,7 @@ async fn main() {
         .route("/posts/{index}", get(get_post_by_index))
         .route("/posts/{index}/{id}", get(get_post_by_index_and_id))
         .route("/posts", get(get_posts))
+        .route("/healthcheck", get(health_check))
         .layer(TraceLayer::new_for_http());
 
     // Run it on localhost:3000
