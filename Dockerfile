@@ -16,10 +16,7 @@ COPY --from=planner /app/recipe.json recipe.json
 
 RUN cargo chef cook --release --recipe-path recipe.json
 
-COPY Cargo.toml Cargo.lock build.rs ./
-COPY src ./src
-COPY static ./static
-COPY posts ./posts
+COPY . .
 
 RUN apt-get update && apt-get install -y curl
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-arm64 \
@@ -29,6 +26,11 @@ RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/downlo
 RUN cargo build --release
 
 FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

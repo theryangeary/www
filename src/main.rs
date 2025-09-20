@@ -645,7 +645,7 @@ async fn main() {
         .route("/posts/{index}", get(get_post_by_index))
         .route("/posts/{index}/{id}", get(get_post_by_index_and_id))
         .route("/posts", get(get_posts))
-        .route("/healthcheck", get(health_check))
+        .route("/health", get(health_check))
         .layer(TraceLayer::new_for_http());
 
     // Run it on localhost:3000
