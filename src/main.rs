@@ -87,6 +87,14 @@ lazy_static! {
             excerpt: "Typing is lame. Pressing buttons is cool 😎. I buy the same things from the grocery store ALL the time. You probably do too.",
             content: include_str!("../posts/2025-why-gl.md"),
             id: "2025-why-gl",
+        },
+        Post {
+            title: "Grocery List Demo is Now Live",
+            date: NaiveDate::from_ymd_opt(2025, 10, 14).unwrap(),
+            tags: vec!["gl", "homelab"],
+            excerpt: "Take it for a spin!", 
+            content: include_str!("../posts/2025-gl-demo.md"),
+            id: "2025-gl-demo",
         }
     ];
 
