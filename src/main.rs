@@ -145,6 +145,15 @@ lazy_static! {
             category: ProjectCategory::Production,
         },
         Project {
+            id: "gl".to_string(),
+            title: "gl".to_string(),
+            description: "A personal-software grocery list featuring multi-player, autocomplete, and smart categorization".to_string(),
+            tech_stack: vec!["Homelab".to_string(), "Sqlite".to_string(), "Rust".to_string(), "React".to_string(), "Typescript".to_string()],
+            github_url: Some("https://github.com/theryangeary/gl".to_string()),
+            try_it_url: Some("https://gldemo.ryangeary.dev".to_string()),
+            category: ProjectCategory::Production,
+        },
+        Project {
             id: "ginh".to_string(),
             title: "Ginh Is Not a Histogram".to_string(),
             description: "A shell-based visual representation of a user's shell history.".to_string(),
