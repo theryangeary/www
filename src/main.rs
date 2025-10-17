@@ -13,10 +13,10 @@
 
 use std::str::FromStr;
 
+use axum::Json;
 use axum::extract::Path;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
-use axum::Json;
 use axum::{Router, routing::get};
 use chrono::NaiveDate;
 use lazy_static::lazy_static;
@@ -415,6 +415,63 @@ fn post_article_markup(p: &Post) -> Markup {
     }
 }
 
+fn post_linked_list_markup(post: &Post) -> Markup {
+    let previous_sequence_number = POSTS
+        .iter()
+        .enumerate()
+        .find(|(_, p)| p.id == post.id)
+        .map(|i| i.0)
+        .map(|d| d.checked_sub(1))
+        .flatten();
+
+    let next_sequence_number = POSTS
+        .iter()
+        .enumerate()
+        .find(|(_, p)| p.id == post.id)
+        .map(|i| i.0)
+        .filter(|d| *d < POSTS.len() - 1)
+        .map(|d| d.checked_add(1)) 
+        .flatten();
+
+
+    let prev_post_opt =previous_sequence_number.map(|i|& POSTS[i]);
+    let next_post_opt = next_sequence_number.map(|i| &POSTS[i]);
+
+    let card_classes = "flex-none 
+    max-w-2/5 overflow-hidden 
+    p-4 py-3.5 
+    bg-black/5 hover:bg-black/10 
+    dark:bg-white/5 hover:dark:bg-white/10 
+    text-violet-600 dark:text-violet-400 
+    border border-2 rounded-md 
+    border-violet-300 dark:border-violet-700";
+
+    let card_direction_classes="text-sm text-gray-700 dark:text-gray-300";
+    let text_right=" text-right";
+
+    let card_title_classes="text-lg";
+
+    html! {
+        div class="flex max-w-full pb-4" {
+            @if let Some(prev_index) = previous_sequence_number && let Some(prev_post) = prev_post_opt {
+                a href=(&format!("/posts/{}", prev_index)) class=(card_classes) {
+                    p class=(card_direction_classes) { "← Previous Post" }
+                    p class=(card_title_classes){ (prev_post.title) }
+                }
+            }
+
+            div class="flex-grow"{}
+
+            @if let Some(next_index) = next_sequence_number && let Some(next_post) =next_post_opt {
+                a href=(&format!("/posts/{}", next_index)) class=(card_classes) {
+                    p class=(card_direction_classes.to_owned()+text_right) { "Next Post →" }
+                    p class=(card_title_classes) { (next_post.title) }
+                }
+            }
+        }
+    }
+}
+
 fn post_page_markup(post: &Post) -> Markup {
     html! {
         html {
@@ -428,6 +485,8 @@ fn post_page_markup(post: &Post) -> Markup {
                     (post_article_markup(post))
 
                     div class="container mx-auto px-4 pb-8" {
+                        (post_linked_list_markup(post))
+
                         a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
                             "← Back to Posts"
                         }
