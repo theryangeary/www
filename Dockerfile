@@ -1,5 +1,5 @@
 # use chef for faster rust builds/better caching
-FROM lukemathwalker/cargo-chef:latest-rust-1.87 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.88 AS chef
 WORKDIR /app
 
 # generate chef plan
