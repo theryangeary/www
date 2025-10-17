@@ -430,11 +430,10 @@ fn post_linked_list_markup(post: &Post) -> Markup {
         .find(|(_, p)| p.id == post.id)
         .map(|i| i.0)
         .filter(|d| *d < POSTS.len() - 1)
-        .map(|d| d.checked_add(1)) 
+        .map(|d| d.checked_add(1))
         .flatten();
 
-
-    let prev_post_opt =previous_sequence_number.map(|i|& POSTS[i]);
+    let prev_post_opt = previous_sequence_number.map(|i| &POSTS[i]);
     let next_post_opt = next_sequence_number.map(|i| &POSTS[i]);
 
     let card_classes = "flex-none 
@@ -446,10 +445,10 @@ fn post_linked_list_markup(post: &Post) -> Markup {
     border border-2 rounded-md 
     border-violet-300 dark:border-violet-700";
 
-    let card_direction_classes="text-sm text-gray-700 dark:text-gray-300";
-    let text_right=" text-right";
+    let card_direction_classes = "text-sm text-gray-700 dark:text-gray-300";
+    let text_right = " text-right";
 
-    let card_title_classes="text-sm md:text-md lg:text-lg ";
+    let card_title_classes = "text-sm md:text-md lg:text-lg ";
 
     let arrow_classes = "text-sm text-xl";
 
