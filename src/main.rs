@@ -449,14 +449,23 @@ fn post_linked_list_markup(post: &Post) -> Markup {
     let card_direction_classes="text-sm text-gray-700 dark:text-gray-300";
     let text_right=" text-right";
 
-    let card_title_classes="text-lg";
+    let card_title_classes="text-sm md:text-md lg:text-lg ";
+
+    let arrow_classes = "text-sm text-xl";
 
     html! {
         div class="flex max-w-full pb-4" {
             @if let Some(prev_index) = previous_sequence_number && let Some(prev_post) = prev_post_opt {
                 a href=(&format!("/posts/{}", prev_index)) class=(card_classes) {
-                    p class=(card_direction_classes) { "← Previous Post" }
-                    p class=(card_title_classes){ (prev_post.title) }
+                    div class="flex pr-2 items-center h-full" {
+                        div class="flex-1 hidden md:flex items-center pr-4"{
+                            p class=(arrow_classes) { "←" }
+                        }
+                        div class="flex-grow" {
+                            p class=(card_direction_classes) { span class="md:hidden" { "← "} "Previous Post"  }
+                            p class=(card_title_classes){ (prev_post.title) }
+                        }
+                    }
                 }
             }
 
@@ -464,8 +473,16 @@ fn post_linked_list_markup(post: &Post) -> Markup {
 
             @if let Some(next_index) = next_sequence_number && let Some(next_post) =next_post_opt {
                 a href=(&format!("/posts/{}", next_index)) class=(card_classes) {
-                    p class=(card_direction_classes.to_owned()+text_right) { "Next Post →" }
-                    p class=(card_title_classes) { (next_post.title) }
+                    div class="flex pl-2 items-center h-full" {
+                        div class="flex-grow" {
+                            p class=(card_direction_classes.to_owned()+text_right) { "Next Post" span class="md:hidden" { " →"} }
+                            p class=(card_title_classes.to_owned()+text_right) { (next_post.title) }
+                        }
+                        div class="flex-1 hidden md:flex items-center pl-4 "{
+                            p class=(arrow_classes) { "→" }
+                        }
+                    }
+
                 }
             }
         }
