@@ -470,7 +470,7 @@ fn post_linked_list_markup(post: &Post) -> Markup {
 
             div class="flex-grow"{}
 
-            @if let Some(next_index) = next_sequence_number && let Some(next_post) =next_post_opt {
+            @if let Some(next_index) = next_sequence_number && let Some(next_post) = next_post_opt {
                 a href=(&format!("/posts/{}", next_index)) class=(card_classes) {
                     div class="flex pl-2 items-center h-full" {
                         div class="flex-grow" {
