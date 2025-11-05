@@ -171,6 +171,15 @@ lazy_static! {
             try_it_url: Some("https://theryangeary.github.io/photo".to_string()),
             category: ProjectCategory::Production,
         },
+        Project {
+            id: "mta-display".to_string(),
+            title: "MTA Subway Train Display".to_string(),
+            description: "A simulation of MTA displays with user-specified messages, complete with guestbook.".to_string(),
+            tech_stack: vec!["Rust".to_string(), "htmx".to_string(), "Tailwind CSS".to_string(), "maud".to_string(), "axum".to_string(), "Sqlite".to_string()],
+            github_url: Some("https://github.com/theryangeary/mta-display".to_string()),
+            try_it_url: Some("https://mtadisplay.ryangeary.dev".to_string()),
+            category: ProjectCategory::Production,
+        }
     ];
 }
 
