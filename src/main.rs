@@ -245,6 +245,7 @@ mod tag {
 }
 
 struct Project {
+    #[allow(dead_code)]
     id: String,
     title: String,
     description: String,
