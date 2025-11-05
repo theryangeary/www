@@ -1,5 +1,3 @@
-## I caused a security vulnerability today
-
 I have been using docker swarm to deploy many services in my homelab. And I have not cared for the experience. I have effectively created a monorepo in which the process to deploy any one of the n services runs in O(n) time. So I've started instituting workarounds that allow me to deploy _some_ things in O(1) time. And today that caused a vulnerability.
 
 ## The set up
