@@ -38,7 +38,10 @@ jobs:
           github-token: ${{ secrets.GHCR_PAT }}
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,format=short,prefix=
+            type=ref,event=branch,prefix=
+            type=ref,event=tag,prefix=
+            type=sha,format=short,prefix=sha-
+            type=sha,format=long,prefix=sha-
 
       - name: Build and push Docker image
         id: build-and-push
