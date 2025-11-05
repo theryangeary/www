@@ -103,7 +103,7 @@ lazy_static! {
             id: "choose".to_string(),
             title: "choose".to_string(),
             description: "A human-friendly and fast alternative to cut (and sometimes awk).".to_string(),
-            tech_stack: vec!["Rust".to_string()],
+            tech_stack: vec![tag::RUST],
             github_url: Some("https://github.com/theryangeary/choose".to_string()),
             try_it_url: Some("https://github.com/theryangeary/choose?tab=readme-ov-file#installing-from-source".to_string()),
             category: ProjectCategory::Production,
@@ -112,7 +112,7 @@ lazy_static! {
             id: "personal-website".to_string(),
             title: "Personal Website".to_string(),
             description: "This site! Built with Rust (maud + axum), htmx, and Tailwind CSS. Compiles to a single binary with all static resources included.".to_string(),
-            tech_stack: vec!["Rust".to_string(), "htmx".to_string(), "Tailwind CSS".to_string(), "maud".to_string(), "axum".to_string()],
+            tech_stack: vec![tag::RUST, tag::HTMX, tag::TAILWIND, tag::MAUD, tag::AXUM],
             github_url: Some("https://github.com/theryangeary/www".to_string()),
             try_it_url: Some("https://www.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
@@ -121,7 +121,7 @@ lazy_static! {
             id: "homelab".to_string(),
             title: "Homelab".to_string(),
             description: "My personal infrastructure, hosted on a Raspberry Pi running docker swarm in my router closet.".to_string(),
-            tech_stack: vec!["Docker".to_string(), "Cloudflare Tunnels".to_string(), "Smallweb".to_string(), "Nginx".to_string()],
+            tech_stack: vec![tag::DOCKER, tag::CLOUDFLARE_TUNNELS, tag::CADDY],
             github_url: Some("https://github.com/theryangeary/homelab".to_string()),
             try_it_url: Some("https://www.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
@@ -130,7 +130,7 @@ lazy_static! {
             id: "fib-o1".to_string(),
             title: "fib-o1: Constant Time Fibonacci Sequence Values".to_string(),
             description: "Abusing the Rust build system to provide O(1) fib(n) at runtime.".to_string(),
-            tech_stack: vec!["Rust".to_string(), "BigInt".to_string()],
+            tech_stack: vec![tag::RUST, tag::BIGINT],
             github_url: Some("https://github.com/theryangeary/fib-o1".to_string()),
             try_it_url: Some("https://crates.io/crates/fib-o1".to_string()),
             category: ProjectCategory::Toy,
@@ -139,7 +139,7 @@ lazy_static! {
             id: "pathfinder".to_string(),
             title: "Pathfinder.prof".to_string(),
             description: "A daily word puzzle combining points-based tiles with grid-based word finding.".to_string(),
-            tech_stack: vec!["Fly.io".to_string(), "Cloudflare Pages".to_string(), "Postgres".to_string(), "Rust".to_string(), "React".to_string(), "Typescript".to_string()],
+            tech_stack: vec![tag::FLY_IO, tag::CLOUDFLARE_PAGES, tag::POSTGRES, tag::RUST, tag::REACT, tag::TYPESCRIPT],
             github_url: Some("https://github.com/theryangeary/pathfinder".to_string()),
             try_it_url: Some("https://pathfinder.prof".to_string()),
             category: ProjectCategory::Production,
@@ -148,7 +148,7 @@ lazy_static! {
             id: "gl".to_string(),
             title: "gl".to_string(),
             description: "A personal-software grocery list featuring multi-player, autocomplete, and smart categorization".to_string(),
-            tech_stack: vec!["Homelab".to_string(), "Sqlite".to_string(), "Rust".to_string(), "React".to_string(), "Typescript".to_string()],
+            tech_stack: vec![tag::HOMELAB, tag::SQLITE, tag::RUST, tag::REACT, tag::TYPESCRIPT],
             github_url: Some("https://github.com/theryangeary/gl".to_string()),
             try_it_url: Some("https://gldemo.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
@@ -157,7 +157,7 @@ lazy_static! {
             id: "ginh".to_string(),
             title: "Ginh Is Not a Histogram".to_string(),
             description: "A shell-based visual representation of a user's shell history.".to_string(),
-            tech_stack: vec!["Bash".to_string(), "That's it it's pure bash script".to_string()],
+            tech_stack: vec![tag::BASH, "That's it it's pure bash script"],
             github_url: Some("https://github.com/crclark96/ginh".to_string()),
             try_it_url: Some("https://github.com/crclark96/ginh?tab=readme-ov-file#installation".to_string()),
             category: ProjectCategory::Toy,
@@ -166,7 +166,7 @@ lazy_static! {
             id: "photo".to_string(),
             title: "Photography Gallery Website".to_string(),
             description: "Photo gallery website made with pure vanilla javascript components.".to_string(),
-            tech_stack: vec!["Bash".to_string(), "Javascript".to_string(), "exiftool".to_string()],
+            tech_stack: vec![tag::BASH, tag::JAVASCRIPT, tag::EXIFTOOL],
             github_url: Some("https://github.com/theryangeary/photo".to_string()),
             try_it_url: Some("https://theryangeary.github.io/photo".to_string()),
             category: ProjectCategory::Production,
@@ -175,7 +175,7 @@ lazy_static! {
             id: "mta-display".to_string(),
             title: "MTA Subway Train Display".to_string(),
             description: "A simulation of MTA displays with user-specified messages, complete with guestbook.".to_string(),
-            tech_stack: vec!["Rust".to_string(), "htmx".to_string(), "Tailwind CSS".to_string(), "maud".to_string(), "axum".to_string(), "Sqlite".to_string()],
+            tech_stack: vec![tag::RUST, tag::HTMX, tag::TAILWIND, tag::MAUD, tag::AXUM, tag::SQLITE],
             github_url: Some("https://github.com/theryangeary/mta-display".to_string()),
             try_it_url: Some("https://mtadisplay.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
@@ -220,11 +220,35 @@ impl Post {
     }
 }
 
+mod tag {
+    pub type Tag = &'static str;
+
+    pub const RUST: Tag = "Rust";
+    pub const AXUM: Tag = "Axum";
+    pub const MAUD: Tag = "Maud";
+    pub const HTMX: Tag = "htmx";
+    pub const TAILWIND: Tag = "Tailwind CSS";
+    pub const DOCKER: Tag = "Docker";
+    pub const CLOUDFLARE_TUNNELS: Tag = "Cloudflare Tunnels";
+    pub const CADDY: Tag = "Caddy";
+    pub const BIGINT: Tag = "BigInt";
+    pub const FLY_IO: Tag = "Fly.io";
+    pub const CLOUDFLARE_PAGES: Tag = "Cloudflare Pages";
+    pub const POSTGRES: Tag = "PostgreSQL";
+    pub const REACT: Tag = "React";
+    pub const TYPESCRIPT: Tag = "TypeScript";
+    pub const HOMELAB: Tag = "Homelab";
+    pub const SQLITE: Tag = "SQLite";
+    pub const BASH: Tag = "Bash";
+    pub const JAVASCRIPT: Tag = "JavaScript";
+    pub const EXIFTOOL: Tag = "ExifTool";
+}
+
 struct Project {
     id: String,
     title: String,
     description: String,
-    tech_stack: Vec<String>,
+    tech_stack: Vec<tag::Tag>,
     github_url: Option<String>,
     try_it_url: Option<String>,
     category: ProjectCategory,
