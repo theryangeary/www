@@ -95,6 +95,14 @@ lazy_static! {
             excerpt: "Take it for a spin!", 
             content: include_str!("../posts/2025-gl-demo.md"),
             id: "2025-gl-demo",
+        },
+        Post {
+            title: "I Caused a Security Vulnerability Today",
+            date: NaiveDate::from_ymd_opt(2025, 11, 05).unwrap(),
+            tags: vec![tag::DOCKER, tag::HOMELAB, tag::MTA_DISPLAY, tag::CADDY],
+            excerpt: "It doesn't help that I have absolutely no automated observability yet.",
+            content: include_str!("../posts/2025-homelab-sec-vuln.md"),
+            id: "2025-homelab-sec-vuln",
         }
     ];
 
@@ -203,7 +211,7 @@ struct Post {
     /// data of publication; displayed in page
     date: chrono::NaiveDate,
     /// relevant subjects or technologies; displayed in page
-    tags: Vec<&'static str>,
+    tags: Vec<tag::Tag>,
     /// excerpt from content; not displayed in post page, but displayed in previews to posts
     excerpt: &'static str,
     /// markdown content of document
@@ -242,6 +250,7 @@ mod tag {
     pub const BASH: Tag = "Bash";
     pub const JAVASCRIPT: Tag = "JavaScript";
     pub const EXIFTOOL: Tag = "ExifTool";
+    pub const MTA_DISPLAY: Tag = "MTA Display";
 }
 
 struct Project {
