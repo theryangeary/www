@@ -30,8 +30,6 @@ RUN case "${TARGETARCH}" in \
     && chmod +x tailwindcss-${TARGETOS}-${TW_ARCH} \
     && mv tailwindcss-${TARGETOS}-${TW_ARCH} tailwindcss
 
-RUN file ./tailwindcss && exit 1
-
 RUN cargo build --release
 
 FROM debian:bookworm-slim AS runtime
