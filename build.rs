@@ -1,4 +1,4 @@
-use std::{env, path::Path, process::Command};
+use std::{env, path::Path, process::{Command, exit}};
 
 fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
@@ -12,7 +12,13 @@ fn main() {
         .arg(manifest_path.join("static"))
         .arg(out_path)
         .output()
-        .expect("failed to copy /static to $OUT_DIR");
+        .expect("failed to copy ./static to $OUT_DIR");
+    
+    // fail the build if input.css in the source directory does not exist or is empty
+    let input_css = manifest_path.join("input.css");
+    if !input_css.exists() || input_css.metadata().unwrap().len() == 0 {
+        panic!("input.css does not exist or is empty");
+    }
 
     // ./tailwindcss -i input.css -o static/output.css --minify
     Command::new("./tailwindcss")
