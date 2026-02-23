@@ -19,9 +19,10 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
 RUN apt-get update && apt-get install -y curl
-RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-amd64 \
-    && chmod +x tailwindcss-linux-amd64 \
-    && mv tailwindcss-linux-amd64 tailwindcss
+ARG TARGETARCH
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-${TARGETARCH} \
+    && chmod +x tailwindcss-linux-${TARGETARCH} \
+    && mv tailwindcss-linux-${TARGETARCH} tailwindcss
 
 RUN cargo build --release
 
