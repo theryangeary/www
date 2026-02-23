@@ -4,5 +4,5 @@ on: [push]
 
 jobs:
   call-workflow:
-    uses: theryangeary/actions-workflows/.github/workflows/docker_build_and_push.yml@main
+    uses: theryangeary/actions-workflows/.github/workflows/docker_build_and_push.yml@6857a37
     secrets: inherit
