@@ -21,7 +21,7 @@ fn main() {
     }
 
     // ./tailwindcss -i input.css -o static/output.css --minify
-    Command::new("./tailwindcss")
+    Command::new(manifest_path.join("tailwindcss"))
         .arg("-i")
         .arg("input.css")
         .arg("-o")
