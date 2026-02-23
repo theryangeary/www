@@ -3,5 +3,5 @@ name: Publish to GHCR.io
 on: [push]
 
 jobs:
-  docker-build-and-push:
-    uses: theryangeary/actions-workflows/.github/workflows/docker_build_and_push.yml@6857a37
+  call-workflow:
+    uses: theryangeary/actions-workflows/.github/workflows/docker_build_and_push.yml@main
