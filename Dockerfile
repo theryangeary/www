@@ -24,6 +24,8 @@ RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/downlo
     && chmod +x tailwindcss-linux-${TARGETARCH} \
     && mv tailwindcss-linux-${TARGETARCH} tailwindcss
 
+RUN file ./tailwindcss && exit 1
+
 RUN cargo build --release
 
 FROM debian:bookworm-slim AS runtime
