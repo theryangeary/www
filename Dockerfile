@@ -50,9 +50,7 @@ RUN groupadd --gid 1001 appgroup && \
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/www /www
-
-COPY --chown=appuser:appgroup . .
+COPY --chown=appuser:appgroup --from=builder /app/target/release/www /www
 
 USER appuser
 
