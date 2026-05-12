@@ -39,9 +39,22 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd --gid 1001 appgroup && \
+    useradd \
+        --uid 1001 \
+        --gid appgroup \
+        --shell /bin/bash \
+        --no-create-home \
+        --no-log-init \
+        appuser
+
 WORKDIR /app
 
 COPY --from=builder /app/target/release/www /www
+
+COPY --chown=appuser:appgroup . .
+
+USER appuser
 
 EXPOSE 3000
 
