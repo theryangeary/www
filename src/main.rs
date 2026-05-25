@@ -1,33 +1,26 @@
-//! This is my website, www.ryangeary.dev, which compiles to a single executable
+//! Static site generator for www.ryangeary.dev
 //!
-//! For simplicity, it is a single main.rs file, although it does pull in
-//! resources from other files at build time.
+//! Compiles to a single executable that pre-renders all pages into the `output/` directory.
 //!
-//! The general structure is:
+//! General structure:
 //! 1. const definitions
-//! 1. domain model definitions
-//! 1. `Markup` generating functions
-//! 1. endpoint handlers
-//! 1. main, including the router
-//! 1. utility functions
+//! 2. domain model definitions
+//! 3. `Markup` generating functions (components)
+//! 4. page renderers (return `String`)
+//! 5. static site builder (`main` + helpers)
+//! 6. utility functions
 
-use std::str::FromStr;
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use axum::Json;
-use axum::extract::Path;
-use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
-use axum::response::{IntoResponse, Redirect, Response};
-use axum::{Router, routing::get};
 use chrono::NaiveDate;
 use lazy_static::lazy_static;
 use maud::{DOCTYPE, PreEscaped};
 use maud::{Markup, html};
-use pulldown_cmark::{Options, Parser, html};
-use rust_embed::Embed;
+use pulldown_cmark::{Options, Parser, html as cmark_html};
 use strum::{EnumIter, EnumString, IntoEnumIterator};
-use tokio::signal;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // static resources
 
@@ -119,8 +112,8 @@ lazy_static! {
         Project {
             id: "personal-website".to_string(),
             title: "Personal Website".to_string(),
-            description: "This site! Built with Rust (maud + axum), htmx, and Tailwind CSS. Compiles to a single binary with all static resources included.".to_string(),
-            tech_stack: vec![tag::RUST, tag::HTMX, tag::TAILWIND, tag::MAUD, tag::AXUM],
+            description: "This site! A static site generator built with Rust (maud) and Tailwind CSS. Compiles to a single binary.".to_string(),
+            tech_stack: vec![tag::RUST, tag::TAILWIND, tag::MAUD],
             github_url: Some("https://github.com/theryangeary/www".to_string()),
             try_it_url: Some("https://www.ryangeary.dev".to_string()),
             category: ProjectCategory::Production,
@@ -190,10 +183,6 @@ lazy_static! {
         }
     ];
 }
-
-#[derive(Embed)]
-#[folder = "$OUT_DIR/static"]
-struct Assets;
 
 // domain models
 
@@ -286,7 +275,7 @@ impl ProjectCategory {
     }
 }
 
-// markup generation
+// markup generation (components — return Markup)
 
 fn head(title: &str) -> Markup {
     html! {
@@ -295,7 +284,6 @@ fn head(title: &str) -> Markup {
             meta charset="UTF-8" {};
             meta name="viewport" content="width=device-width, initial-scale=1.0" {};
             link rel="stylesheet" href="/static/output.css";
-            script src="/static/htmx.min.js" {};
             title { (title) }
         }
     }
@@ -313,29 +301,13 @@ fn navbar() -> Markup {
     }
 }
 
-fn project_page_markup(category: ProjectCategory) -> Markup {
-    html! {
-        (head("Projects"))
-        body {
-            div {
-                div class="container mx-auto px-4 py-4" {
-                    (navbar())
-                    div class="mt-8" {
-                        (project_tabs_markup(category))
-                    }
-                }
-            }
-        }
-    }
-}
-
 fn project_tabs_markup(active: ProjectCategory) -> Markup {
     let all_tab_styles = "px-6 py-3 border-1 border-purple-300 font-medium transition-colors ";
     let inactive_tab_styles = "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600";
     let active_tab_styles = "bg-purple-900/75 text-amber-200 ";
-    let target_id = "project_tabs";
+
     html! {
-        div id=(target_id) class="space-y-6 divide-solid divide-purple-300 divide-y-1" {
+        div id="project_tabs" class="space-y-6 divide-solid divide-purple-300 divide-y-1" {
             div class="flex justify-center" {
                 @for tab in ProjectCategory::iter() {
                     @let classes = if tab == active {
@@ -343,14 +315,32 @@ fn project_tabs_markup(active: ProjectCategory) -> Markup {
                     } else {
                         all_tab_styles.to_owned() + inactive_tab_styles
                     };
+                    @let href = tab_href(tab, active);
 
-                    button class=(classes) hx-get=(format!("/projects/{}", tab.to_string())) hx-target=(id(target_id)){
-                        (tab.title())
+                    @if let Some(h) = href {
+                        a class=(classes) href=(h) {
+                            (tab.title())
+                        }
+                    } @else {
+                        span class=(classes) {
+                            (tab.title())
+                        }
                     }
                 }
             }
 
             (project_grid_markup(active.current_projects()))
+        }
+    }
+}
+
+fn tab_href(tab: ProjectCategory, active: ProjectCategory) -> Option<&'static str> {
+    if tab == active {
+        None // active tab — render as <span>
+    } else {
+        match tab {
+            ProjectCategory::Production => Some("../"),
+            ProjectCategory::Toy => Some("toy/"),
         }
     }
 }
@@ -498,7 +488,7 @@ fn post_linked_list_markup(post: &Post) -> Markup {
     html! {
         div class="flex max-w-full pb-4" {
             @if let Some(prev_index) = previous_sequence_number && let Some(prev_post) = prev_post_opt {
-                a href=(&format!("/posts/{}", prev_index)) class=(card_classes) {
+                a href=(&format!("/posts/{}/{}", prev_index, prev_post.id)) class=(card_classes) {
                     div class="flex pr-2 items-center h-full" {
                         div class="flex-1 hidden md:flex items-center pr-4"{
                             p class=(arrow_classes) { "←" }
@@ -514,7 +504,7 @@ fn post_linked_list_markup(post: &Post) -> Markup {
             div class="flex-grow"{}
 
             @if let Some(next_index) = next_sequence_number && let Some(next_post) = next_post_opt {
-                a href=(&format!("/posts/{}", next_index)) class=(card_classes) {
+                a href=(&format!("/posts/{}/{}", next_index, next_post.id)) class=(card_classes) {
                     div class="flex pl-2 items-center h-full" {
                         div class="flex-grow" {
                             p class=(card_direction_classes.to_owned()+text_right) { "Next Post" span class="md:hidden" { " →"} }
@@ -525,31 +515,6 @@ fn post_linked_list_markup(post: &Post) -> Markup {
                         }
                     }
 
-                }
-            }
-        }
-    }
-}
-
-fn post_page_markup(post: &Post) -> Markup {
-    html! {
-        html {
-            (head(post.title))
-            body {
-                div {
-                    div class="container mx-auto px-4 py-4" {
-                        (navbar())
-                    }
-
-                    (post_article_markup(post))
-
-                    div class="container mx-auto px-4 pb-8" {
-                        (post_linked_list_markup(post))
-
-                        a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
-                            "← Back to Posts"
-                        }
-                    }
                 }
             }
         }
@@ -571,7 +536,7 @@ fn post_card_markup(index: usize, p: &Post) -> Markup {
         article class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow" {
             header class="mb-4" {
                 h2 class="text-xl font-semibold text-violet-900/50 dark:text-violet-300 mb-2" {
-                    a href=(&format!("/posts/{}", index)) class="hover:underline" {
+                    a href=(&format!("/posts/{}/{}", index, p.id)) class="hover:underline" {
                         (p.title)
                     }
                 }
@@ -591,75 +556,86 @@ fn post_card_markup(index: usize, p: &Post) -> Markup {
                 (p.excerpt)
             }
 
-            a href=(&format!("/posts/{}", index)) class="text-violet-600 dark:text-violet-400 hover:underline font-medium" {
+            a href=(&format!("/posts/{}/{}", index, p.id)) class="text-violet-600 dark:text-violet-400 hover:underline font-medium" {
                 "Read more →"
             }
         }
     }
 }
 
-// endpoint handlers
+// page renderers (return String)
 
-async fn get_projects() -> Response {
-    project_page_markup(ProjectCategory::Production).into_response()
-}
+fn index_page() -> String {
+    html! {
+        html {
+            (head("Ryan Geary"))
+            body {
+                div class="container mx-auto px-4 flex h-screen" {
+                    div class="m-auto" {
+                        h1 class="font-bold underline p-4 text-primary" {
+                            span class="text-4xl md:text-6xl lg:text-8xl" {
+                                "Ryan Geary"
+                            }
+                        }
 
-async fn get_project_tabs(Path(tab): Path<String>, headers: HeaderMap) -> Response {
-    let category = match ProjectCategory::from_str(&tab) {
-        Ok(c) => c,
-        Err(_) => return Redirect::permanent("/projects").into_response(),
-    };
+                        p class="flex justify-center text-secondary" {
+                            "Software Developer @Lyft"
+                        }
+                        p class="flex justify-center text-secondary" {
+                            "FOSS Developer"
+                        }
 
-    match headers.get("HX-Request") {
-        Some(_) => {
-            let mut response = project_tabs_markup(category).into_response();
+                        div class="flex justify-center" {
+                            img src="/static/headshot.jpg" alt="Ryan Geary's headshot" class="w-3xs rounded-full p-10" {};
+                        }
 
-            let headers = response.headers_mut();
-            headers.insert(
-                "HX-Push-Url",
-                HeaderValue::from_str(&format!("/projects/{category}")).unwrap(),
-            );
-
-            response
-        }
-        None => project_page_markup(category).into_response(),
-    }
-}
-
-async fn get_post_by_index(Path(desc): Path<String>) -> Result<Redirect, StatusCode> {
-    match usize::from_str(&desc) {
-        Ok(index) => {
-            if index >= POSTS.len() {
-                return Err(StatusCode::NOT_FOUND);
+                        div class="grid grid-cols-2 grid-rows-2 gap-4" {
+                            @for b in HOMEPAGE_BUTTONS {
+                                a href=(b.href) target=(b.target.unwrap_or("_self")) class="
+                                    flex
+                                    justify-center
+                                    text-amber-200
+                                    hover:text-amber-50
+                                    bg-purple-900/75
+                                    p-4
+                                    border-4
+                                    border-purple-300
+                                    rounded-none
+                                    active:translate-1
+                                    active:shadow-none
+                                    shadow-[8px_8px_0_rgba(0,0,0,0.25)]
+                                    "
+                                {
+                                    (b.title)
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            let post = &POSTS[index];
-            Ok(Redirect::permanent(&format!(
-                "/posts/{}/{}",
-                index, post.id
-            )))
         }
-        Err(_) => {
-            // not an int, could be a post id
-            match &POSTS.iter().enumerate().find(|(_, p)| p.id == desc) {
-                Some((index, post)) => Ok(Redirect::permanent(&format!(
-                    "/posts/{}/{}",
-                    index, post.id
-                ))),
-                None => Err(StatusCode::NOT_FOUND),
+    }.into_string()
+}
+
+fn projects_page(category: ProjectCategory) -> String {
+    html! {
+        html {
+            (head("Projects"))
+            body {
+                div {
+                    div class="container mx-auto px-4 py-4" {
+                        (navbar())
+                        div class="mt-8" {
+                            (project_tabs_markup(category))
+                        }
+                    }
+                }
             }
         }
-    }
+    }.into_string()
 }
 
-async fn get_post_by_index_and_id(Path((index, id)): Path<(usize, String)>) -> Response {
-    let post = &POSTS[index];
-    if post.id != id {
-        return Redirect::permanent(&format!("/posts/{}/{}", index, post.id)).into_response();
-    }
-    post_page_markup(post).into_response()
-}
-
-async fn get_posts() -> Markup {
+fn posts_page() -> String {
     html! {
         html {
             (head("Posts"))
@@ -674,124 +650,152 @@ async fn get_posts() -> Markup {
                 }
             }
         }
-    }
+    }.into_string()
 }
 
-async fn get_index() -> Markup {
+fn post_page(post: &Post) -> String {
     html! {
-        (head("Ryan Geary"))
-        body {
-            div class="container mx-auto px-4 flex h-screen" {
-                div class="m-auto" {
-                    h1 class="font-bold underline p-4 text-primary" {
-                        span class="text-4xl md:text-6xl lg:text-8xl" {
-                            "Ryan Geary"
-                        }
+        html {
+            (head(post.title))
+            body {
+                div {
+                    div class="container mx-auto px-4 py-4" {
+                        (navbar())
                     }
 
-                    p class="flex justify-center text-secondary" {
-                        "Software Developer @Lyft"
-                    }
-                    p class="flex justify-center text-secondary" {
-                        "FOSS Developer"
-                    }
+                    (post_article_markup(post))
 
-                    div class="flex justify-center" {
-                        img src="/static/headshot.jpg" alt="Ryan Geary's headshot" class="w-3xs rounded-full p-10" {};
-                    }
+                    div class="container mx-auto px-4 pb-8" {
+                        (post_linked_list_markup(post))
 
-                    div class="grid grid-cols-2 grid-rows-2 gap-4" {
-                        @for b in HOMEPAGE_BUTTONS {
-                            a href=(b.href) target=(b.target.unwrap_or("_self")) class="
-                                flex
-                                justify-center
-                                text-amber-200
-                                hover:text-amber-50
-                                bg-purple-900/75
-                                p-4
-                                border-4
-                                border-purple-300
-                                rounded-none
-                                active:translate-1
-                                active:shadow-none
-                                shadow-[8px_8px_0_rgba(0,0,0,0.25)]
-                                "
-                            {
-                                (b.title)
-                            }
+                        a href="/posts" class="text-violet-600 dark:text-violet-400 hover:underline" {
+                            "← Back to Posts"
                         }
                     }
                 }
             }
         }
+    }.into_string()
+}
+
+// static site builder
+
+fn main() {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let output_dir = manifest_dir.join("output");
+
+    cleanup_output(&output_dir);
+    build_css(manifest_dir, &output_dir);
+    copy_static_assets(manifest_dir, &output_dir);
+    write_index(&output_dir);
+    write_posts(&output_dir);
+    write_projects(&output_dir);
+
+    let file_count = count_files(&output_dir);
+    println!("Done. {} files in output/", file_count);
+}
+
+fn cleanup_output(output_dir: &Path) {
+    if output_dir.exists() {
+        fs::remove_dir_all(output_dir).expect("failed to remove output/");
+    }
+    fs::create_dir_all(output_dir).expect("failed to create output/");
+}
+
+fn build_css(manifest_dir: &Path, output_dir: &Path) {
+    fs::create_dir_all(output_dir.join("static")).unwrap();
+    let tailwind_bin = manifest_dir.join("tailwindcss");
+    Command::new(&tailwind_bin)
+        .arg("-i")
+        .arg(manifest_dir.join("input.css"))
+        .arg("-o")
+        .arg(output_dir.join("static/output.css"))
+        .arg("--minify")
+        .current_dir(manifest_dir)
+        .status()
+        .expect("failed to compile tailwind styles — ensure ./tailwindcss binary exists");
+}
+
+fn copy_static_assets(manifest_dir: &Path, output_dir: &Path) {
+    let static_src = manifest_dir.join("static");
+    let static_dst = output_dir.join("static");
+    fs::create_dir_all(&static_dst).unwrap();
+
+    for entry in fs::read_dir(&static_src).unwrap() {
+        let entry = entry.unwrap();
+        let file_name = entry.file_name();
+        if file_name == "htmx.min.js" {
+            continue;
+        }
+        fs::copy(entry.path(), static_dst.join(&file_name)).unwrap();
     }
 }
 
-async fn get_static_file(Path(path): Path<String>) -> impl IntoResponse {
-    tracing::info!("static");
-    match Assets::get(&path) {
-        Some(content) => {
-            let mime = mime_guess::from_path(path).first_or_octet_stream();
-
-            ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
-        }
-        None => {
-            println!(
-                "{} not found in {:?}",
-                path,
-                Assets::iter().collect::<Vec<_>>()
-            );
-            not_found().await
-        }
-    }
+fn write_index(output_dir: &Path) {
+    fs::write(output_dir.join("index.html"), index_page()).expect("failed to write index.html");
 }
 
-async fn not_found() -> Response {
-    (StatusCode::NOT_FOUND, "404").into_response()
-}
+fn write_posts(output_dir: &Path) {
+    // Posts listing page
+    let posts_dir = output_dir.join("posts");
+    fs::create_dir_all(&posts_dir).unwrap();
+    fs::write(posts_dir.join("index.html"), posts_page()).expect("failed to write posts/index.html");
 
-async fn health_check() -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "status": "healthy",
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-    }))
-}
+    // Individual posts
+    for (i, post) in POSTS.iter().enumerate() {
+        // Canonical post page: output/posts/{i}/{id}/index.html
+        let post_dir = output_dir.join(format!("posts/{}/{}", i, post.id));
+        fs::create_dir_all(&post_dir).unwrap();
+        fs::write(post_dir.join("index.html"), post_page(post))
+            .expect(&format!("failed to write posts/{}/{}index.html", i, post.id));
 
-// main + router
-
-#[tokio::main]
-async fn main() {
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "grocery_list_backend=debug,tower_http=debug,axum::rejection=trace".into()
-            }),
+        // Meta-refresh redirect: output/posts/{i}/index.html
+        let redirect_dir = output_dir.join(format!("posts/{}", i));
+        fs::create_dir_all(&redirect_dir).unwrap();
+        fs::write(
+            redirect_dir.join("index.html"),
+            meta_refresh(&format!("/posts/{}/{}", i, post.id)),
         )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
-    // Build our application
-    let app = Router::new()
-        .route("/static/{file}", get(get_static_file))
-        .route("/", get(get_index))
-        .route("/projects", get(get_projects))
-        .route("/projects/{tab}", get(get_project_tabs))
-        .route("/posts/{index}", get(get_post_by_index))
-        .route("/posts/{index}/{id}", get(get_post_by_index_and_id))
-        .route("/posts", get(get_posts))
-        .route("/health", get(health_check))
-        .layer(TraceLayer::new_for_http());
-
-    // Run it on localhost:3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-
-    let server =
-        axum::serve(listener, app.into_make_service()).with_graceful_shutdown(shutdown_signal());
-
-    if let Err(e) = server.await {
-        tracing::error!("server error: {}", e);
+        .expect(&format!("failed to write posts/{}/index.html", i));
     }
+}
+
+fn write_projects(output_dir: &Path) {
+    // Production projects: output/projects/index.html
+    let projects_dir = output_dir.join("projects");
+    fs::create_dir_all(&projects_dir).unwrap();
+    fs::write(
+        projects_dir.join("index.html"),
+        projects_page(ProjectCategory::Production),
+    )
+    .expect("failed to write projects/index.html");
+
+    // Toy projects: output/projects/toy/index.html
+    let toy_dir = projects_dir.join("toy");
+    fs::create_dir_all(&toy_dir).unwrap();
+    fs::write(toy_dir.join("index.html"), projects_page(ProjectCategory::Toy))
+        .expect("failed to write projects/toy/index.html");
+}
+
+fn count_files(dir: &Path) -> usize {
+    let mut count = 0;
+    for _entry in walkdir(dir) {
+        count += 1;
+    }
+    count
+}
+
+fn walkdir(dir: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    if dir.is_file() {
+        files.push(dir.to_path_buf());
+    } else if dir.is_dir() {
+        for entry in fs::read_dir(dir).unwrap() {
+            let entry = entry.unwrap();
+            files.extend(walkdir(&entry.path()));
+        }
+    }
+    files
 }
 
 // utility functions
@@ -799,7 +803,7 @@ async fn main() {
 fn markdown_to_html(markdown: &str) -> String {
     let parser = Parser::new_ext(markdown, Options::all());
     let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
+    cmark_html::push_html(&mut html_output, parser);
     html_output
 }
 
@@ -807,28 +811,9 @@ fn id(s: &str) -> String {
     format!("#{s}")
 }
 
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    tokio::select! {
-        _ = ctrl_c => {
-            tracing::info!("received Ctrl+C signal");
-        }
-        _ = terminate => {
-            tracing::info!("received SIGTERM signal");
-        }
-    }
-
-    tracing::info!("starting graceful shutdown");
+fn meta_refresh(url: &str) -> String {
+    format!(
+        r#"<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url={}"></head></html>"#,
+        url
+    )
 }

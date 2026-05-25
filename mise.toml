@@ -1,8 +1,8 @@
-# rebuild and restart when any file changes
-[tasks.dev]
-run = '''
-mise watch serve --watch . --restart
-'''
-
-[tasks.serve]
+[tasks.build]
 run = 'cargo run'
+
+[tasks.preview]
+run = 'python3 -m http.server 8080 --directory output'
+
+[tasks.dev]
+run = 'mise watch build --watch . --restart'
