@@ -85,7 +85,7 @@ lazy_static! {
             title: "Grocery List Demo is Now Live",
             date: NaiveDate::from_ymd_opt(2025, 10, 14).unwrap(),
             tags: vec!["gl", "homelab"],
-            excerpt: "Take it for a spin!", 
+            excerpt: "Take it for a spin!",
             content: include_str!("../posts/2025-gl-demo.md"),
             id: "2025-gl-demo",
         },
@@ -96,7 +96,16 @@ lazy_static! {
             excerpt: "It doesn't help that I have absolutely no automated observability yet.",
             content: include_str!("../posts/2025-homelab-sec-vuln.md"),
             id: "2025-homelab-sec-vuln",
+        },
+        Post {
+            title: "Experimenting with Local Inference",
+            date: NaiveDate::from_ymd_opt(2026, 05, 26).unwrap(),
+            tags: vec![tag::RUST, tag::MAUD, tag::LLMS],
+            excerpt: "At what point do the models become smart and efficient enough that I can just run them on my commodity hardware rather than shelling out to someone else hosting it publicly?",
+            content: include_str!("../posts/2026-local-inference.md"),
+            id: "2026-local-inference",
         }
+
     ];
 
     static ref PROJECTS: Vec<Project> = vec![
@@ -240,6 +249,7 @@ mod tag {
     pub const JAVASCRIPT: Tag = "JavaScript";
     pub const EXIFTOOL: Tag = "ExifTool";
     pub const MTA_DISPLAY: Tag = "MTA Display";
+    pub const LLMS: Tag = "LLMs";
 }
 
 struct Project {
@@ -364,17 +374,17 @@ fn project_grid_markup<'a>(projects: impl Iterator<Item = &'a Project>) -> Marku
 fn project_card_markup(project: &Project) -> Markup {
     html! {
         div class="
-            bg-white 
-            dark:bg-gray-800 
-            rounded-lg 
-            shadow-md 
-            p-6 
-            hover:shadow-lg 
-            transition-shadow 
-            flex 
-            flex-col 
-            justify-between 
-            h-full" 
+            bg-white
+            dark:bg-gray-800
+            rounded-lg
+            shadow-md
+            p-6
+            hover:shadow-lg
+            transition-shadow
+            flex
+            flex-col
+            justify-between
+            h-full"
         {
             div {
                 header class="mb-4" {
@@ -469,13 +479,13 @@ fn post_linked_list_markup(post: &Post) -> Markup {
     let prev_post_opt = previous_sequence_number.map(|i| &POSTS[i]);
     let next_post_opt = next_sequence_number.map(|i| &POSTS[i]);
 
-    let card_classes = "flex-none 
-    max-w-2/5 overflow-hidden 
-    p-4 py-3.5 
-    bg-black/5 hover:bg-black/10 
-    dark:bg-white/5 hover:dark:bg-white/10 
-    text-violet-600 dark:text-violet-400 
-    border border-2 rounded-md 
+    let card_classes = "flex-none
+    max-w-2/5 overflow-hidden
+    p-4 py-3.5
+    bg-black/5 hover:bg-black/10
+    dark:bg-white/5 hover:dark:bg-white/10
+    text-violet-600 dark:text-violet-400
+    border border-2 rounded-md
     border-violet-300 dark:border-violet-700";
 
     let card_direction_classes = "text-sm text-gray-700 dark:text-gray-300";
@@ -632,7 +642,8 @@ fn projects_page(category: ProjectCategory) -> String {
                 }
             }
         }
-    }.into_string()
+    }
+    .into_string()
 }
 
 fn posts_page() -> String {
@@ -650,7 +661,8 @@ fn posts_page() -> String {
                 }
             }
         }
-    }.into_string()
+    }
+    .into_string()
 }
 
 fn post_page(post: &Post) -> String {
@@ -739,15 +751,18 @@ fn write_posts(output_dir: &Path) {
     // Posts listing page
     let posts_dir = output_dir.join("posts");
     fs::create_dir_all(&posts_dir).unwrap();
-    fs::write(posts_dir.join("index.html"), posts_page()).expect("failed to write posts/index.html");
+    fs::write(posts_dir.join("index.html"), posts_page())
+        .expect("failed to write posts/index.html");
 
     // Individual posts
     for (i, post) in POSTS.iter().enumerate() {
         // Canonical post page: output/posts/{i}/{id}/index.html
         let post_dir = output_dir.join(format!("posts/{}/{}", i, post.id));
         fs::create_dir_all(&post_dir).unwrap();
-        fs::write(post_dir.join("index.html"), post_page(post))
-            .expect(&format!("failed to write posts/{}/{}index.html", i, post.id));
+        fs::write(post_dir.join("index.html"), post_page(post)).expect(&format!(
+            "failed to write posts/{}/{}index.html",
+            i, post.id
+        ));
 
         // Meta-refresh redirect: output/posts/{i}/index.html
         let redirect_dir = output_dir.join(format!("posts/{}", i));
@@ -773,8 +788,11 @@ fn write_projects(output_dir: &Path) {
     // Toy projects: output/projects/toy/index.html
     let toy_dir = projects_dir.join("toy");
     fs::create_dir_all(&toy_dir).unwrap();
-    fs::write(toy_dir.join("index.html"), projects_page(ProjectCategory::Toy))
-        .expect("failed to write projects/toy/index.html");
+    fs::write(
+        toy_dir.join("index.html"),
+        projects_page(ProjectCategory::Toy),
+    )
+    .expect("failed to write projects/toy/index.html");
 }
 
 fn count_files(dir: &Path) -> usize {
